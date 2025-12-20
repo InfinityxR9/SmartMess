@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import LinearRegression
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers
 from sklearn.preprocessing import StandardScaler
 import joblib
 import json
@@ -12,7 +14,7 @@ class MessCrowdPredictor:
     Predicts crowd levels for the next 4 hours based on historical data.
     """
     
-    def __init__(self, model_path='crowd_model.pkl', scaler_path='scaler.pkl'):
+    def __init__(self, model_path='crowd_model.h5', scaler_path='scaler.pkl'):
         self.model = None
         self.scaler = StandardScaler()
         self.model_path = model_path
@@ -23,22 +25,22 @@ class MessCrowdPredictor:
     def _load_model(self):
         """Load model and scaler from disk if they exist"""
         try:
-            self.model = joblib.load(self.model_path)
+            self.model = keras.models.load_model(self.model_path)
             self.scaler = joblib.load(self.scaler_path)
             print(f"✓ Model loaded from {self.model_path}")
         except:
             print("✗ No existing model found. Will train new model.")
-            self.model = LinearRegression()
+            self.model = None
     
     def _save_model(self):
         """Save model and scaler to disk"""
-        joblib.dump(self.model, self.model_path)
+        self.model.save(self.model_path)
         joblib.dump(self.scaler, self.scaler_path)
         print(f"✓ Model saved to {self.model_path}")
     
     def train(self, scans_data):
         """
-        Train the model using historical scan data.
+        Train the TensorFlow model using historical scan data.
         
         Args:
             scans_data: List of scan documents with timestamp and messId
@@ -70,10 +72,27 @@ class MessCrowdPredictor:
         # Scale features
         X_scaled = self.scaler.fit_transform(X)
         
-        # Train model
-        self.model.fit(X_scaled, y)
-        self._save_model()
+        # Build simple TensorFlow regression model
+        self.model = keras.Sequential([
+            layers.Dense(1, input_shape=(2,))
+        ])
         
+        self.model.compile(
+            optimizer='adam',
+            loss='mse',
+            metrics=['mae']
+        )
+        
+        # Train model
+        self.model.fit(
+            X_scaled, y,
+            epochs=50,
+            batch_size=8,
+            verbose=1,
+            validation_split=0.2
+        )
+        
+        self._save_model()
         print(f"✓ Model trained with {len(hourly_counts)} data points")
         return True
     
@@ -111,7 +130,7 @@ class MessCrowdPredictor:
             X_scaled = self.scaler.transform(X)
             
             # Make prediction
-            pred = self.model.predict(X_scaled)[0]
+            pred = self.model.predict(X_scaled, verbose=0)[0][0]
             pred = max(0, pred)  # Ensure non-negative
             
             predictions.append({
@@ -125,23 +144,6 @@ class MessCrowdPredictor:
     def get_hourly_stats(self):
         """Return hourly statistics"""
         return self.hourly_data
-        return None
-    
-    # Create predictor
-    predictor = MessCrowdPredictor()
-    
-    # Prepare data
-    X_train, y_train = predictor.prepare_data(scans)
-    
-    # Build and train model
-    predictor.build_model(X_train.shape[1])
-    predictor.train(X_train, y_train, epochs=50)
-    
-    # Save model
-    predictor.save_model()
-    
-    print("Model training completed successfully")
-    return predictor
 
 
 if __name__ == '__main__':
