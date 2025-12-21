@@ -393,5 +393,5 @@ For API issues:
 
 ---
 
-**Last Updated**: 2024
+**Last Updated**: 2025
 **API Version**: 1.0

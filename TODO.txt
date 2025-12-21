@@ -1,6 +1,11 @@
-Manager Auth verification
+Prediction API URL in frontend/lib/services/prediction_service.dart
+Cloud Run Endpoint after deployment
 
-read docs
+Should Create
+backend/.env (from .env.example)
+Sample data in Firestore collections
+
+tomorrow/tuesday meet with DR and address the workflow
 
 SNIPPETS:
 run backend:
