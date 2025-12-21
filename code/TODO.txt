@@ -1,4 +1,0 @@
-Manager Auth verification
-
-read docs
-copilot subscription

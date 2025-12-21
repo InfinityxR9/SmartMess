@@ -15,7 +15,7 @@ cd frontend
 flutter build web --release
 
 Run:
-cd build/web
+cd frontend/build/web
 python -m http.server 8888
 
 Direct run: (debug)
