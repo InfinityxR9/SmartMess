@@ -1,3 +1,4 @@
+[NOT FOR DAKSH RATHI]
 Prediction API URL in frontend/lib/services/prediction_service.dart
 Cloud Run Endpoint after deployment
 
@@ -5,11 +6,50 @@ Should Create
 backend/.env (from .env.example)
 Sample data in Firestore collections
 
-tomorrow/tuesday meet with DR and address the workflow
+[FOR DAKSH RATHI]
+First, create a new branch and start working on it:
+open git bash in terminal in vs code
+it should say something like:
 
+daksh@... MINGW64 /.../SmartMess (master)
+master -> means you're on master branch
+
+use: git checkout -b develop 
+this will create a new branch 'develop' and switch to it,
+(Now, master would be replaced by 'develop')
+
+To start the servers:
+1) start the backend server 
+2) build the frontend
+3) start the frontend 
+you may take help from the snippets written below
+
+Before doing anything with the AI, you should run the servers and perform tests like adding/marking attendance, accessing reviews, accounts, authentication... check everything and make sure that everything is working fine.
+You may check the web console (you can access via Ctrl+shift+I), the terminals of the servers running for any errors, You see any unknown error whose cause you don't know, message me.
+
+I demonstrated the project when there were little to no errors at all (Just Logical Problems), so, I want before doing anything forward, your PC and mine are at same level, by checking everything is alright. (Don't hussle in this process, and do each and every debug testing calmly)
+
+I'm also adding your github registered email id (iamdakshrathi@gmail.com) to the viewer for firebase database, so that you may access it and look at the details for login and other things. You will not have edit permissions, if you want that, contact me.
+
+If you face any problem, CONTACT ME.
+
+Open the chat session, [NOTE: Do all these with the repo opened in the vscode (work in root directory)]
+select Claude Haiku 
+Paste the prompt in the chat (You can change some part of prompt, as explained below), if it asks for write, let it have it and don't undo if it asks after writing files, let it run scripts in terminals, if it asks so.
+
+The prompt above the text "----------- **PROBLEMS TO BE ADDRESSED** -----------------" in PROMPT.txt can be changed, it is meant to explain to the AI about our project, i've written some part, however you may change/add it.
+
+[IMPORTANT]
+You may need a serviceAccountKey.json file (it might throw errors regarding the connection is not there)
+If you feel like there're errors that weren't there when i demonstrated it, ask me directly.
+This file is never committed to the github, hence i posses it only.
+
+[TO RUN THE SERVERS]
 SNIPPETS:
 run backend:
+
 cd backend
+.\venv\Scripts\activate
 python main.py 
 
 run frontend:
