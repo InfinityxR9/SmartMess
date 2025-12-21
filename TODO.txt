@@ -1,0 +1,22 @@
+Manager Auth verification
+
+read docs
+
+SNIPPETS:
+run backend:
+cd backend
+python main.py 
+
+run frontend:
+by building (production build)
+
+Build:
+cd frontend
+flutter build web --release
+
+Run:
+cd build/web
+python -m http.server 8888
+
+Direct run: (debug)
+flutter run -d edge
