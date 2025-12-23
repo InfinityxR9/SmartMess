@@ -65,3 +65,24 @@ python -m http.server 8888
 
 Direct run: (debug)
 flutter run -d edge
+
+[MORE INTEGRATIONS and PROBLEMS]
+
+Add a proper "How to completely run project" in readme. that includes donwloading sdk, python.. etc, and installing dependencies, by means of creating venvs, etc..
+
+show mess manager name in student profile 
+Integrate create manu in manager completely and start integrating "show menu" in student ui
+
+change in how reviews are stored in database and shown in manager's UI:
+    - strucuture should be (in DB): reviews/<messId>/<date>/<review itself>
+    - reviews submitting on the today's date and current slot (IMPORTANT!), like lunch reviews for 12-2pm... and so, should be visible at the managers side only. 
+    - the point is, reviews submitted yesterday should not be visible today, and reviews submitted this morning for breakfast should not be visible now at lunch time.
+
+The Predictions should be refereshed at the 15 minutes interval slots, Since we're collecting data for students going inside only, not coming out, so we perform predictions based on the data of how many students were inside the mess in last 15 minutes only.
+
+Eg, Lunch starts at 12pm and ends at 2pm, so the predictions will be refereshed at following slots,
+    12:15pm (First Prediction, based on data of students that went inside from 12-12:15 only)
+    12:30pm (Second Prediction, based on data of students that went inside from 12:15-12:30 only)
+    and so on...
+
+This is a critical bug and feature enhancement that needs to be done.
