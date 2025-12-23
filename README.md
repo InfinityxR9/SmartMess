@@ -2,8 +2,8 @@
 
 ![Flutter Web](https://img.shields.io/badge/Flutter-Web-blue.svg)
 ![Firebase](https://img.shields.io/badge/Firebase-Realtime%20DB-orange.svg)
-![TensorFlow](https://img.shields.io/badge/TensorFlow-2.13-red.svg)
 ![Python](https://img.shields.io/badge/Python-3.10+-green.svg)
+![Cloud Run](https://img.shields.io/badge/Google%20Cloud-Run-4285F4.svg)
 
 ## 📱 Project Overview
 
@@ -11,12 +11,13 @@
 
 ### ✨ Key Features
 
-- 🤖 **AI Crowd Prediction**: Machine learning-based predictions for best time to visit
+- 🤖 **Real-Time AI Predictions**: Fresh crowd forecasts on every page load (15-minute granularity)
 - 📊 **Real-time Dashboard**: Live crowd metrics and capacity tracking
 - 🔐 **QR Code Integration**: Quick entry logging with staff verification
 - ⭐ **Feedback System**: Real-time rating aggregation and display
 - 📋 **Menu Management**: Daily menu tracking and updates
 - 🗺️ **Google Maps Integration**: Location-based mess information
+
 
 ## 🏗️ Architecture
 

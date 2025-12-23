@@ -38,63 +38,89 @@ class MessCrowdPredictor:
         joblib.dump(self.scaler, self.scaler_path)
         print(f"✓ Model saved to {self.model_path}")
     
-    def train(self, scans_data):
+    def train(self, attendance_data):
         """
-        Train the TensorFlow model using historical scan data.
+        Train the TensorFlow model using historical attendance data.
         
         Args:
-            scans_data: List of scan documents with timestamp and messId
+            attendance_data: List of attendance documents with 'ts' (timestamp) and 'messId'
         """
-        if not scans_data:
+        if not attendance_data:
             print("✗ No training data provided")
             return False
         
-        # Convert to DataFrame
-        df = pd.DataFrame(scans_data)
-        df['ts'] = pd.to_datetime(df['ts'])
-        
-        # Extract features
-        df['hour'] = df['ts'].dt.hour
-        df['day_of_week'] = df['ts'].dt.dayofweek
-        df['minute_bucket'] = (df['ts'].dt.minute // 15).astype(int)
-        
-        # Count scans per hour (target variable)
-        hourly_counts = df.groupby(['hour', 'day_of_week']).size().reset_index(name='crowd_count')
-        
-        if len(hourly_counts) < 3:
-            print("✗ Insufficient training data (need at least 3 data points)")
+        try:
+            # Convert to DataFrame
+            df = pd.DataFrame(attendance_data)
+            
+            # Handle both datetime objects and timestamp strings
+            def parse_timestamp(ts):
+                if isinstance(ts, str):
+                    try:
+                        return pd.to_datetime(ts)
+                    except:
+                        return None
+                else:
+                    return pd.to_datetime(ts)
+            
+            df['ts'] = df['ts'].apply(parse_timestamp)
+            df = df[df['ts'].notna()]  # Remove invalid timestamps
+            
+            if len(df) == 0:
+                print("✗ No valid timestamp data found")
+                return False
+            
+            # Extract features
+            df['hour'] = df['ts'].dt.hour
+            df['day_of_week'] = df['ts'].dt.dayofweek
+            df['minute_bucket'] = (df['ts'].dt.minute // 15).astype(int)
+            
+            # Count attendance records per hour (target variable)
+            hourly_counts = df.groupby(['hour', 'day_of_week']).size().reset_index(name='crowd_count')
+            
+            if len(hourly_counts) < 3:
+                print(f"✗ Insufficient training data: {len(hourly_counts)} data points (need at least 3)")
+                print("  Tip: Collect more attendance data to improve predictions")
+                return False
+            
+            # Prepare features and target
+            X = hourly_counts[['hour', 'day_of_week']].values.astype(float)
+            y = hourly_counts['crowd_count'].values.astype(float)
+            
+            # Scale features
+            X_scaled = self.scaler.fit_transform(X)
+            
+            # Build simple TensorFlow regression model
+            self.model = keras.Sequential([
+                layers.Dense(32, input_shape=(2,), activation='relu'),
+                layers.Dense(16, activation='relu'),
+                layers.Dense(1)
+            ])
+            
+            self.model.compile(
+                optimizer='adam',
+                loss='mse',
+                metrics=['mae']
+            )
+            
+            # Train model with smaller verbosity
+            print(f"Training on {len(df)} attendance records, {len(hourly_counts)} unique time slots...")
+            self.model.fit(
+                X_scaled, y,
+                epochs=30,
+                batch_size=4,
+                verbose=0,
+                validation_split=0.2
+            )
+            
+            self._save_model()
+            print(f"✓ Model trained with {len(df)} attendance records")
+            print(f"✓ {len(hourly_counts)} unique hourly time slots identified")
+            return True
+            
+        except Exception as e:
+            print(f"✗ Error during training: {e}")
             return False
-        
-        # Prepare features and target
-        X = hourly_counts[['hour', 'day_of_week']].values.astype(float)
-        y = hourly_counts['crowd_count'].values.astype(float)
-        
-        # Scale features
-        X_scaled = self.scaler.fit_transform(X)
-        
-        # Build simple TensorFlow regression model
-        self.model = keras.Sequential([
-            layers.Dense(1, input_shape=(2,))
-        ])
-        
-        self.model.compile(
-            optimizer='adam',
-            loss='mse',
-            metrics=['mae']
-        )
-        
-        # Train model
-        self.model.fit(
-            X_scaled, y,
-            epochs=50,
-            batch_size=8,
-            verbose=1,
-            validation_split=0.2
-        )
-        
-        self._save_model()
-        print(f"✓ Model trained with {len(hourly_counts)} data points")
-        return True
     
     def predict_next_slots(self, current_hour=None, current_day=None, num_slots=4):
         """
@@ -119,25 +145,33 @@ class MessCrowdPredictor:
         
         predictions = []
         
-        for i in range(num_slots):
-            # Calculate hour and day
-            next_hour = (current_hour + i + 1) % 24
-            next_day = current_day + ((current_hour + i + 1) // 24)
-            next_day = next_day % 7
-            
-            # Prepare features
-            X = np.array([[next_hour, next_day]]).astype(float)
-            X_scaled = self.scaler.transform(X)
-            
-            # Make prediction
-            pred = self.model.predict(X_scaled, verbose=0)[0][0]
-            pred = max(0, pred)  # Ensure non-negative
-            
-            predictions.append({
-                'time_slot': f"{next_hour}:00",
-                'predicted_crowd': int(pred),
-                'crowd_percentage': int((pred / 100) * 100),  # Assume capacity is 100 for simple demo
-            })
+        try:
+            for i in range(num_slots):
+                # Calculate hour and day
+                next_hour = (current_hour + i + 1) % 24
+                next_day = current_day + ((current_hour + i + 1) // 24)
+                next_day = next_day % 7
+                
+                # Prepare features
+                X = np.array([[next_hour, next_day]]).astype(float)
+                X_scaled = self.scaler.transform(X)
+                
+                # Make prediction
+                pred = self.model.predict(X_scaled, verbose=0)[0][0]
+                pred = max(0, pred)  # Ensure non-negative
+                
+                # Assume average capacity is 100 for percentage calculation
+                crowd_percentage = min(100, (pred / 100) * 100)
+                
+                predictions.append({
+                    'time_slot': f"{next_hour:02d}:00",
+                    'time_24h': f"{next_hour:02d}:00",
+                    'predicted_crowd': int(pred),
+                    'crowd_percentage': round(crowd_percentage, 1),
+                })
+        except Exception as e:
+            print(f"Warning: Prediction failed: {e}")
+            return []
         
         return predictions
     
@@ -149,4 +183,7 @@ class MessCrowdPredictor:
 if __name__ == '__main__':
     # Example usage
     print("Mess Crowd Prediction Model")
-    print("Train this model with your Firebase data")
+    print("Train this model with your Firebase attendance data")
+    print("\nUsage:")
+    print("  python train.py  # Train the model")
+    print("  python -c 'from crowd_predictor import MessCrowdPredictor; p = MessCrowdPredictor(); print(p.predict_next_slots())'  # Make predictions")
