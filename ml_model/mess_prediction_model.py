@@ -62,13 +62,16 @@ class MessPredictionModel:
             print(f"[ERROR] Error loading model for {self.mess_id}: {e}")
             return False
     
-    def get_meal_type(self, hour):
-        """Get meal type based on hour"""
-        if 7 <= hour < 10:
+    def get_meal_type(self, hour, minute=0):
+        """
+        Get meal type based on hour and minute
+        Breakfast: 7:30-9:30, Lunch: 12:00-14:00, Dinner: 19:30-21:30
+        """
+        if 7 < hour < 10 or (hour == 7 and minute >= 30) or (hour == 9 and minute < 30):
             return 'breakfast', 0
-        elif 11 <= hour < 15:
+        elif 12 <= hour < 14 or (hour == 14 and minute == 0):
             return 'lunch', 1
-        elif 18 <= hour < 22:
+        elif 19 < hour < 22 or (hour == 19 and minute >= 30) or (hour == 21 and minute < 30):
             return 'dinner', 2
         else:
             return None, -1
@@ -90,11 +93,11 @@ class MessPredictionModel:
             # Outside meal hours
             return []
         
-        # Meal time ranges
+        # Meal time ranges (correct times)
         meal_times = {
             'breakfast': (7, 30, 9, 30),  # 7:30 to 9:30
-            'lunch': (11, 0, 15, 0),      # 11:00 to 15:00
-            'dinner': (18, 0, 22, 0)      # 18:00 to 22:00
+            'lunch': (12, 0, 14, 0),      # 12:00 to 14:00
+            'dinner': (19, 30, 21, 30)    # 19:30 to 21:30
         }
         
         meal_start_hour, meal_start_min, meal_end_hour, meal_end_min = meal_times[meal_type]

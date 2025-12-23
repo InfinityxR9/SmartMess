@@ -73,13 +73,14 @@ class MessCrowdRegressor:
                 day_of_week = dt.weekday()
                 
                 # Meal type encoding (breakfast=0, lunch=1, dinner=2)
-                meal_type = 0  # Default
-                if 7 <= hour < 10:
-                    meal_type = 0  # Breakfast
-                elif 11 <= hour < 15:
-                    meal_type = 1  # Lunch
-                elif 18 <= hour < 22:
-                    meal_type = 2  # Dinner
+                # Breakfast: 7:30-9:30, Lunch: 12:00-14:00, Dinner: 19:30-21:30
+                meal_type = -1  # Default (not during meal time)
+                if 7 <= hour < 10 or (hour == 7 and dt.minute >= 30):
+                    meal_type = 0  # Breakfast (7:30-9:30)
+                elif 12 <= hour < 14 or (hour == 14 and dt.minute == 0):
+                    meal_type = 1  # Lunch (12:00-14:00)
+                elif 19 <= hour < 22 or (hour == 19 and dt.minute >= 30):
+                    meal_type = 2  # Dinner (19:30-21:30)
                 
                 # Create feature vector
                 feature_vector = [hour, day_of_week, meal_type]
@@ -90,7 +91,7 @@ class MessCrowdRegressor:
                 continue
         
         if len(features) < 5:
-            print(f"⚠ Insufficient data for {self.mess_id}: {len(features)} records")
+            print(f"[WARN] Insufficient data for {self.mess_id}: {len(features)} records")
             return None, None
         
         X = np.array(features, dtype=np.float32)
@@ -181,7 +182,7 @@ def load_firebase_data(mess_id, days_back=7):
         elif os.path.exists('../backend/serviceAccountKey.json'):
             cred = credentials.Certificate('../backend/serviceAccountKey.json')
         else:
-            print(f"✗ Firebase credentials not found")
+            print(f"[ERROR] Firebase credentials not found")
             return []
         
         # Initialize Firebase app if not already done
@@ -254,13 +255,13 @@ def load_firebase_data(mess_id, days_back=7):
             return attendance_records
             
         except Exception as e:
-            print(f"✗ Error querying attendance: {e}")
+            print(f"[ERROR] Error querying attendance: {e}")
             import traceback
             traceback.print_exc()
             return []
             
     except Exception as e:
-        print(f"✗ Firebase error: {e}")
+        print(f"[ERROR] Firebase error: {e}")
         import traceback
         traceback.print_exc()
         return []
