@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:smart_mess/providers/unified_auth_provider.dart';
 import 'package:smart_mess/services/attendance_service.dart';
 import 'dart:convert';
-import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 class QRScannerScreen extends StatefulWidget {
@@ -28,7 +26,6 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
   bool _isSuccess = false;
   String? _studentName;
   String? _enrollmentId;
-  bool _permissionGranted = false;
 
   @override
   void initState() {
@@ -37,36 +34,6 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
       formats: const [BarcodeFormat.qrCode],
       returnImage: false,
     );
-    _requestCameraPermission();
-  }
-
-  Future<void> _requestCameraPermission() async {
-    // On web, permissions are handled differently (via browser)
-    if (kIsWeb) {
-      setState(() => _permissionGranted = true);
-      return;
-    }
-    
-    // On mobile platforms, request camera permission
-    final status = await Permission.camera.request();
-    
-    setState(() {
-      _permissionGranted = status.isGranted;
-    });
-    
-    if (!_permissionGranted) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Camera permission is required to scan QR codes'),
-            action: SnackBarAction(
-              label: 'Settings',
-              onPressed: () => openAppSettings(),
-            ),
-          ),
-        );
-      }
-    }
   }
 
   @override
@@ -202,84 +169,47 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
       body: Stack(
         children: [
           // Camera view
-          if (!_permissionGranted && !kIsWeb)
-            Container(
-              color: Colors.black,
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.lock_outline, size: 64, color: Colors.orange),
-                    SizedBox(height: 16),
-                    Text(
-                      'Camera Permission Required',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+          MobileScanner(
+            controller: cameraController,
+            onDetect: _handleBarcode,
+            errorBuilder: (context, error, child) {
+              return Container(
+                color: Colors.black,
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline, size: 64, color: Colors.red),
+                      SizedBox(height: 16),
+                      Text(
+                        'Camera Error',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'SmartMess needs camera access to scan QR codes.\nPlease grant permission in app settings.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey, fontSize: 14),
-                    ),
-                    SizedBox(height: 24),
-                    ElevatedButton.icon(
-                      onPressed: _requestCameraPermission,
-                      icon: Icon(Icons.check),
-                      label: Text('Grant Permission'),
-                    ),
-                    SizedBox(height: 12),
-                    TextButton(
-                      onPressed: () => openAppSettings(),
-                      child: Text('Open Settings'),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else
-            MobileScanner(
-              controller: cameraController,
-              onDetect: _handleBarcode,
-              errorBuilder: (context, error, child) {
-                return Container(
-                  color: Colors.black,
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.error_outline, size: 64, color: Colors.red),
-                        SizedBox(height: 16),
-                        Text(
-                          'Camera Error',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Please check camera permissions in settings',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.grey, fontSize: 14),
-                        ),
-                        SizedBox(height: 24),
-                        ElevatedButton(
-                          onPressed: () {
-                            cameraController.start();
-                          },
-                          child: Text('Retry'),
-                        ),
-                      ],
-                    ),
+                      SizedBox(height: 8),
+                      Text(
+                        kIsWeb 
+                          ? 'Please ensure your browser has camera permissions enabled and you are accessing via HTTPS.'
+                          : 'Please check camera permissions in settings',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey, fontSize: 14),
+                      ),
+                      SizedBox(height: 24),
+                      ElevatedButton(
+                        onPressed: () {
+                          cameraController.start();
+                        },
+                        child: Text('Retry'),
+                      ),
+                    ],
                   ),
                 );
-              },
-            ),
+              };
+            },
+          ),
 
           // Processing overlay with student details
           if (_message != null)

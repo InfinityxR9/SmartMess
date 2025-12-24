@@ -12,18 +12,21 @@ class PredictionService {
       final response = await http.post(
         Uri.parse('$baseUrl/predict'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'messId': messId}),
+        body: jsonEncode({
+          'messId': messId,
+          'devMode': true,  // Enable dev mode to show predictions outside meal times
+        }),
       ).timeout(Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         return PredictionResult.fromJson(data);
       } else {
-        // Handle error silently
+        print('[Prediction] Backend returned ${response.statusCode}: ${response.body}');
         return null;
       }
     } catch (e) {
-      // Handle error silently
+      print('[Prediction] Error: $e');
       return null;
     }
   }

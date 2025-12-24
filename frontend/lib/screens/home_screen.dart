@@ -5,6 +5,7 @@ import 'package:smart_mess/screens/qr_scanner_screen.dart';
 import 'package:smart_mess/screens/qr_generator_screen.dart';
 import 'package:smart_mess/screens/manual_attendance_screen.dart';
 import 'package:smart_mess/screens/menu_creation_screen.dart';
+import 'package:smart_mess/screens/menu_screen.dart';
 import 'package:smart_mess/screens/analytics_screen.dart';
 import 'package:smart_mess/screens/rating_screen.dart';
 import 'package:smart_mess/screens/prediction_screen.dart';
@@ -262,8 +263,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             title: 'View Menu',
                             color: Color(0xFF03DAC6),
                             onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Menu coming soon')),
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => MenuScreen(messId: authProvider.messId ?? ''),
+                                ),
                               );
                             },
                           ),

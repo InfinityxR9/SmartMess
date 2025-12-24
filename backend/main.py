@@ -13,7 +13,23 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'ml_model'))
 from prediction_model_tf import PredictionService
 
 app = Flask(__name__)
-CORS(app)
+
+# Configure CORS properly for all origins
+CORS(app, resources={
+    r"/*": {
+        "origins": ["*"],
+        "methods": ["GET", "POST", "OPTIONS", "DELETE", "PUT"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
+
+# Add after-request handler for CORS headers
+@app.after_request
+def add_cors_headers(response):
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS, DELETE, PUT'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    return response
 
 # Initialize Firebase
 try:
