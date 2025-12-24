@@ -103,22 +103,46 @@ class FirestoreService {
 
   Stream<Menu?> getTodayMenuStream(String messId) {
     final now = DateTime.now();
-    final startOfDay = DateTime(now.year, now.month, now.day);
-    final endOfDay = startOfDay.add(Duration(days: 1));
+    final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
+    // Query from nested structure: messId/daily/dateStr
     return _db
         .collection('menus')
-        .where('messId', isEqualTo: messId)
-        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
-        .where('date', isLessThan: Timestamp.fromDate(endOfDay))
-        .limit(1)
+        .doc(messId)
+        .collection('daily')
+        .doc(dateStr)
         .snapshots()
         .map((snapshot) {
-      if (snapshot.docs.isNotEmpty) {
-        return Menu.fromFirestore(snapshot.docs.first);
-      }
-      return null;
-    });
+          if (snapshot.exists) {
+            final data = snapshot.data() as Map<String, dynamic>?;
+            if (data != null) {
+              // Convert the flat menu data to Menu model
+              return Menu(
+                id: snapshot.id,
+                messId: messId,
+                date: now,
+                items: [
+                  if ((data['breakfast'] as String?)?.isNotEmpty ?? false)
+                    MenuItem(
+                      name: 'Breakfast',
+                      description: data['breakfast'] as String?,
+                    ),
+                  if ((data['lunch'] as String?)?.isNotEmpty ?? false)
+                    MenuItem(
+                      name: 'Lunch',
+                      description: data['lunch'] as String?,
+                    ),
+                  if ((data['dinner'] as String?)?.isNotEmpty ?? false)
+                    MenuItem(
+                      name: 'Dinner',
+                      description: data['dinner'] as String?,
+                    ),
+                ],
+              );
+            }
+          }
+          return null;
+        });
   }
 
   Future<void> addMenu(Menu menu) async {

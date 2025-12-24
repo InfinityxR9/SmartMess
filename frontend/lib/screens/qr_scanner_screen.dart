@@ -7,7 +7,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 class QRScannerScreen extends StatefulWidget {
-  final String mealType; // breakfast, lunch, or dinner
+  final String mealType;
 
   const QRScannerScreen({
     Key? key,
@@ -24,7 +24,6 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
   bool _isProcessing = false;
   String? _message;
   bool _isSuccess = false;
-  String? _studentName;
   String? _enrollmentId;
 
   @override
@@ -49,8 +48,6 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
     for (final barcode in barcodes) {
       try {
         setState(() => _isProcessing = true);
-
-        // Parse QR data
         final qrData = barcode.rawValue ?? '';
         final decodedData = jsonDecode(qrData) as Map<String, dynamic>?;
 
@@ -75,21 +72,17 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
           return;
         }
 
-        // Get auth provider
         final authProvider = context.read<UnifiedAuthProvider>();
 
-        // CRITICAL: Verify mess isolation - student can only scan for their own mess
         if (messId != authProvider.messId) {
           setState(() {
-            _message = 'ERROR: This QR code is for a different mess!\nYou cannot mark attendance here.';
+            _message = 'ERROR: This QR code is for a different mess!';
             _isSuccess = false;
             _isProcessing = false;
           });
-          // Security: Log mess mismatch attempts internally
           return;
         }
 
-        // CRITICAL: Verify meal type matches
         if (mealType != widget.mealType) {
           setState(() {
             _message = 'QR code is for ${mealType.toUpperCase()}, not ${widget.mealType.toUpperCase()}';
@@ -99,7 +92,6 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
           return;
         }
 
-        // Check if already marked
         final alreadyMarked = await _attendanceService.isAlreadyMarked(
           messId,
           authProvider.userId ?? '',
@@ -108,14 +100,13 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
 
         if (alreadyMarked) {
           setState(() {
-            _message = 'You have already marked attendance for ${mealType.toUpperCase()} today!';
+            _message = 'Already marked for ${mealType.toUpperCase()} today!';
             _isSuccess = false;
             _isProcessing = false;
           });
           return;
         }
 
-        // Mark attendance
         final success = await _attendanceService.markAttendanceViaQR(
           messId,
           authProvider.userId ?? '',
@@ -127,26 +118,23 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
         if (mounted) {
           setState(() {
             if (success) {
-              _message = '✓ Attendance marked successfully!\n${authProvider.userName}';
-              _studentName = authProvider.userName;
+              _message = '✓ Attendance marked!\n${authProvider.userName}';
               _enrollmentId = authProvider.enrollmentId;
               _isSuccess = true;
 
-              // Auto-close after 2 seconds
               Future.delayed(Duration(seconds: 2), () {
                 if (mounted) {
                   Navigator.pop(context, true);
                 }
               });
             } else {
-              _message = 'Error marking attendance.\nPlease try again.';
+              _message = 'Error marking attendance.';
               _isSuccess = false;
             }
             _isProcessing = false;
           });
         }
       } catch (e) {
-        // Handle parsing and processing errors silently, show to user
         if (mounted) {
           setState(() {
             _message = 'Error: ${e.toString()}';
@@ -164,11 +152,10 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
       appBar: AppBar(
         title: Text('Scan QR - ${widget.mealType.toUpperCase()}'),
         elevation: 0,
-        backgroundColor: Color(0xFF6200EE),
+        backgroundColor: const Color(0xFF6200EE),
       ),
       body: Stack(
         children: [
-          // Camera view
           MobileScanner(
             controller: cameraController,
             onDetect: _handleBarcode,
@@ -179,9 +166,9 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.error_outline, size: 64, color: Colors.red),
-                      SizedBox(height: 16),
-                      Text(
+                      const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                      const SizedBox(height: 16),
+                      const Text(
                         'Camera Error',
                         style: TextStyle(
                           color: Colors.white,
@@ -189,35 +176,31 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      SizedBox(height: 8),
+                      const SizedBox(height: 8),
                       Text(
                         kIsWeb 
-                          ? 'Please ensure your browser has camera permissions enabled and you are accessing via HTTPS.'
-                          : 'Please check camera permissions in settings',
+                          ? 'Browser camera access needed. Enable HTTPS and camera permissions.'
+                          : 'Please enable camera permissions in settings',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey, fontSize: 14),
+                        style: const TextStyle(color: Colors.grey, fontSize: 14),
                       ),
-                      SizedBox(height: 24),
+                      const SizedBox(height: 24),
                       ElevatedButton(
-                        onPressed: () {
-                          cameraController.start();
-                        },
-                        child: Text('Retry'),
+                        onPressed: () => cameraController.start(),
+                        child: const Text('Retry'),
                       ),
                     ],
                   ),
-                );
-              };
+                ),
+              );
             },
           ),
-
-          // Processing overlay with student details
           if (_message != null)
             Container(
               color: Colors.black.withValues(alpha: 0.95),
               child: Center(
                 child: Container(
-                  padding: EdgeInsets.all(32),
+                  padding: const EdgeInsets.all(32),
                   decoration: BoxDecoration(
                     color: _isSuccess ? Colors.green : Colors.red,
                     borderRadius: BorderRadius.circular(16),
@@ -230,22 +213,22 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                         size: 80,
                         color: Colors.white,
                       ),
-                      SizedBox(height: 24),
+                      const SizedBox(height: 24),
                       Text(
-                        _message!,
+                        _message ?? '',
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
                           height: 1.5,
                         ),
                       ),
-                      if (_studentName != null) ...[
-                        SizedBox(height: 16),
+                      if (_enrollmentId != null) ...[
+                        const SizedBox(height: 16),
                         Text(
-                          'ID: ${_enrollmentId ?? "N/A"}',
-                          style: TextStyle(
+                          'ID: $_enrollmentId',
+                          style: const TextStyle(
                             color: Colors.white70,
                             fontSize: 14,
                           ),
@@ -256,15 +239,13 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                 ),
               ),
             ),
-
-          // Loading indicator
           if (_isProcessing && _message == null)
             Container(
               color: Colors.black.withValues(alpha: 0.3),
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
+                  children: const [
                     CircularProgressIndicator(
                       valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                     ),
@@ -281,22 +262,20 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                 ),
               ),
             ),
-
-          // Instructions overlay
           if (_message == null && !_isProcessing)
             Positioned(
               bottom: 32,
               left: 0,
               right: 0,
               child: Container(
-                margin: EdgeInsets.symmetric(horizontal: 16),
-                padding: EdgeInsets.all(16),
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.7),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Column(
-                  children: [
+                  children: const [
                     Icon(Icons.qr_code_2, size: 48, color: Colors.white),
                     SizedBox(height: 12),
                     Text(
@@ -313,7 +292,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                       'Automatic scanning in progress',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: Colors.grey[300],
+                        color: Colors.grey,
                         fontSize: 12,
                       ),
                     ),
@@ -326,3 +305,4 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
     );
   }
 }
+
