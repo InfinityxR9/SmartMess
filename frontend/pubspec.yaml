@@ -24,6 +24,9 @@ dependencies:
   # QR Code Scanning
   mobile_scanner: ^3.5.0
   
+  # Permissions handling
+  permission_handler: ^11.4.4
+  
   # HTTP for API calls
   http: ^1.1.0
   

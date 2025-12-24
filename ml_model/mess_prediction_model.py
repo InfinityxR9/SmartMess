@@ -65,13 +65,15 @@ class MessPredictionModel:
     def get_meal_type(self, hour, minute=0):
         """
         Get meal type based on hour and minute
-        Breakfast: 7:30-9:30, Lunch: 12:00-14:00, Dinner: 19:30-21:30
+        Breakfast: 7:30-9:30 (inclusive start, exclusive end), 
+        Lunch: 12:00-14:00 (inclusive start, exclusive end),
+        Dinner: 19:30-21:30 (inclusive start, exclusive end)
         """
-        if 7 < hour < 10 or (hour == 7 and minute >= 30) or (hour == 9 and minute < 30):
+        if 7 < hour < 9 or (hour == 7 and minute >= 30) or (hour == 9 and minute < 30):
             return 'breakfast', 0
         elif 12 <= hour < 14 or (hour == 14 and minute == 0):
             return 'lunch', 1
-        elif 19 < hour < 22 or (hour == 19 and minute >= 30) or (hour == 21 and minute < 30):
+        elif 19 < hour < 21 or (hour == 19 and minute >= 30) or (hour == 21 and minute < 30):
             return 'dinner', 2
         else:
             return None, -1

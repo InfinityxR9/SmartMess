@@ -73,13 +73,13 @@ class MessCrowdRegressor:
                 day_of_week = dt.weekday()
                 
                 # Meal type encoding (breakfast=0, lunch=1, dinner=2)
-                # Breakfast: 7:30-9:30, Lunch: 12:00-14:00, Dinner: 19:30-21:30
+                # Breakfast: 7:30-9:30 (exclusive end), Lunch: 12:00-14:00 (exclusive end), Dinner: 19:30-21:30 (exclusive end)
                 meal_type = -1  # Default (not during meal time)
-                if 7 <= hour < 10 or (hour == 7 and dt.minute >= 30):
+                if 7 < hour < 9 or (hour == 7 and dt.minute >= 30) or (hour == 9 and dt.minute < 30):
                     meal_type = 0  # Breakfast (7:30-9:30)
                 elif 12 <= hour < 14 or (hour == 14 and dt.minute == 0):
                     meal_type = 1  # Lunch (12:00-14:00)
-                elif 19 <= hour < 22 or (hour == 19 and dt.minute >= 30):
+                elif 19 < hour < 21 or (hour == 19 and dt.minute >= 30) or (hour == 21 and dt.minute < 30):
                     meal_type = 2  # Dinner (19:30-21:30)
                 
                 # Create feature vector
