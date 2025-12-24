@@ -1,45 +1,15 @@
-We're building an application using google technologies (flutter, tensorflow...), it'll be a mess management system. There's this login page, for student and managers separately, data will be fetched from database using Firebase firestore, there'll be this attendance collection for the collection of all the marked attendance of student at a specific mess (there'll be isolation for mess managers and students, student can only mark attendance at their allotted mess, there'll be this loginCredentials collection with credentials for login), i can't explain each and every thing here, hence, i would suggest you to read the docs and analyse the complete folder (in the docs, there're a few old things written like, google maps api, we'll not be integrating that as of now and both manager and student auth is handeled by database from login credentials), there're a few fixes that i want in the project and certain fixes, we'll be doing predictions for the next few minutes (typically 15 minutes) crowd level and review system, performing aggregate operations on that data so as to present a fully comprehensive analytics on both the managers' and students' end, this is a very vague idea of what this project is all about. I recommend check out the docs/ folder and read what the project is in reality about. and then perform feature fixes as follows:
-
 ----------- **PROBLEMS TO BE ADDRESSED** -----------------
-
-Prediction unavailable on student side (this should also be mess specific), what dummy data should I put to see some dummy predictions
----
 
 camera error, still not accessible, keep in mind that we're only building the web version for our project as of now, no ios/android, hence make sure that the CAMERA is accessible and the qr code is scannable and the attendance can be marked, perfectly, NO BLOATS, I WANT 100% ACCURACY
 ---
 
 only total attendance is visible on manager analytics, everything including, total students in, crowd % (can be calculated from capacity fetching from database), predictions, reviews, analysis should be visible, and also should be visible on the student predictions side also
 
-again, predictions should be available for open mess timings only (7:30am-9:30 am breakfast, 12pm-2pm lunch, 7:30pm-9:30pm dinner),showing that at 12am, mess crowd would be very low doesn't make sense, predictions should be made at 15 minutes interval starting from the mess start timing and should be real-time till the mess end timings.
+Also make available different statistics available and shown in the managers UI (You may choose the apt statistics yourself)
 
 ---
-additionally, the students who marked attendance are shown in the qr section, i also want that the analytics section of manager should also show the marked attendance in slots of that day (can use dropdowns in breakfast, lunch, dinner individually)
+additionally, the students who marked attendance are shown in the qr section of manager UI, i also want that the analytics section of manager should also show the marked attendance in slots of that day (can use dropdowns in breakfast, lunch, dinner individually, with the name of the students displayed, just like it's shown in the QR code section of manager UI)
 
----
-crowd prediction in students is showing when opening in the localhost:8888, however when open in ip:8888 on mobile, (and on pc too for checking), the crowd prediction is showing "predictions unavailable. Please try again later", later i checked and even the manager side predictions are not working saying "predictions unavailable. backend services may be offline", the console says:
-
-127.0.0.1 - - [21/Dec/2025 18:48:55] "OPTIONS /predict HTTP/1.1" 200 -
-Error in predict: 400 The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/smartmess-project/firestore/indexes?create_composite=Ck9wcm9qZWN0cy9zbWFydG1lc3MtcHJvamVjdC9kYXRhYmFzZXMvKGRlZmF1bHQpL2NvbGxlY3Rpb25Hcm91cHMvc2NhbnMvaW5kZXhlcy9fEAEaCgoGbWVzc0lkEAEaBgoCdHMQARoMCghfX25hbWVfXxAB
-127.0.0.1 - - [21/Dec/2025 18:48:55] "POST /predict HTTP/1.1" 500 -
-
-I tried reaching the link and that adds index to the scan collection, but there is no "scan" collections, we're collectively collecting the attendance to the "attendance" collection. MAKE SURE EVERYTHING IS ALIGNED IN THE ML MODEL WITH THE DATABASE and IT SHOULD BE WORKING FINE.
-sometimes this creates problem, sometimes not, MAKE SURE IT WORKS EVERYTIME, THERE SHOULD BE NO DISCREPANCY IN THE CODE ITSELF
-
-additionally, look at the training model also, i want that all the attendance is combined in the single "attendance" collection, not "scans" separately for those who scanned the qr and not manually marked, there are some data in the attendance, so make use of that data for training (other data you may think yourself), additionally, there might be issues with credentials, how do i add them? check and make sure the MODEL IS BEING TRAINED PROPERLY WITHOUT FAIL AND WITHOUT ANY POTENTIAL PROBLEMS, i ran the train.py file, the output was as:
-
-(venv) PS D:\CodePlayground\Flutter\Projects\SmartMess\code\ml_model> python .\train.py
-2025-12-21 17:48:02.781462: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF\_ENABLE\_ONEDNN\_OPTS=0`.
-2025-12-21 17:48:09.753521: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF\_ENABLE\_ONEDNN\_OPTS=0`.
-D:\CodePlayground\Flutter\Projects\SmartMess\code\ml_model\venv\Lib\site-packages\keras\src\export\tf2onnx_lib.py:8: FutureWarning: In the future `np.object` will be defined as the corresponding NumPy scalar.
-  if not hasattr(np, "object"):
-=== Mess Crowd Prediction Model Training ===
-Using Simple Linear Regression
-
-Loading data from Firebase...
-Error loading Firebase data: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.
-✗ No training data found.
-Note: Make sure your Firebase project has scan data in the 'scans' collection
-Model will be trained with default parameters when data becomes available.
 ---
 
 What is SECRET_KEY=your-secret-key-here in .env.example, how do i get its value and fill there?
@@ -49,7 +19,7 @@ how would i get the Prediction API URL in frontend/lib/services/prediction_servi
 
 ---
 
-auto train of the model (say every 7 days), how will that happen, will i have to train that manually? or that will happen automatically with the data already available on the database? make appropriate changes for that
+auto train of the model (say every 7 days), Check if that's currently enabled in the code block.
 ---
 
 How do i add these information about backup and data deletion in the firebase itself?
@@ -79,135 +49,3 @@ service cloud.firestore {
 
 because the already written rule was not working properly, (unable to access the database...), in the database_schema.md, there's a different firestore security rules given, would i need to change that? or let it be this rule and don't change? Suggest that would definitely work and won't affect the performance of the application and also the security concerns are considered
 ---
-
-one time i was running the frontend build server using: python -m http.server 8888, and there were these errors in the terminal and i have no idea why they were occurring, check once and see why they were occurring and fix them.
-
-Serving HTTP on :: port 8888 (http://[::]:8888/) ...
-::1 - - [21/Dec/2025 15:50:17] "GET / HTTP/1.1" 200 -
-::1 - - [21/Dec/2025 15:50:17] code 404, message File not found
-::1 - - [21/Dec/2025 15:50:17] "GET /icons/Icon-192.png HTTP/1.1" 404 -
-::1 - - [21/Dec/2025 15:50:19] "GET /flutter_service_worker.js?v=2901482288 HTTP/1.1" 200 -
-::1 - - [21/Dec/2025 15:50:19] "GET /main.dart.js HTTP/1.1" 200 -
-::1 - - [21/Dec/2025 15:50:19] "GET /index.html HTTP/1.1" 200 -
-::1 - - [21/Dec/2025 15:50:19] "GET /flutter_bootstrap.js HTTP/1.1" 200 -
-::1 - - [21/Dec/2025 15:50:19] "GET /assets/AssetManifest.bin.json HTTP/1.1" 200 -
-::1 - - [21/Dec/2025 15:50:19] "GET /assets/FontManifest.json HTTP/1.1" 200 -
-::ffff:192.168.1.3 - - [21/Dec/2025 15:51:46] "GET / HTTP/1.1" 200 -
-::ffff:192.168.1.3 - - [21/Dec/2025 15:51:47] "GET /flutter_bootstrap.js HTTP/1.1" 200 -
-::ffff:192.168.1.3 - - [21/Dec/2025 15:51:47] "GET /main.dart.js HTTP/1.1" 200 -
-::ffff:192.168.1.3 - - [21/Dec/2025 15:51:48] "GET /assets/FontManifest.json HTTP/1.1" 200 -
-::ffff:192.168.1.3 - - [21/Dec/2025 15:51:48] code 404, message File not found
-::ffff:192.168.1.3 - - [21/Dec/2025 15:51:48] "GET /favicon.ico HTTP/1.1" 404 -
-::ffff:192.168.1.3 - - [21/Dec/2025 15:51:48] "GET /assets/fonts/MaterialIcons-Regular.otf HTTP/1.1" 200 -
-::ffff:192.168.1.3 - - [21/Dec/2025 15:51:48] "GET /assets/packages/cupertino_icons/assets/CupertinoIcons.ttf HTTP/1.1" 200 -
----
----
-Exception occurred during processing of request from ('::ffff:192.168.1.3', 50448, 0, 0)
-Exception occurred during processing of request from ('::ffff:192.168.1.3', 50452, 0, 0)
-Traceback (most recent call last):
-Traceback (most recent call last):
-  File "C:\Users\aryan\AppData\Local\Programs\Python\Python313\Lib\socketserver.py", line 697, in process_request_thread
-    self.finish_request(request, client_address)
-    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\aryan\AppData\Local\Programs\Python\Python313\Lib\http\server.py", line 1320, in finish_request
-    self.RequestHandlerClass(request, client_address, self,
-    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                             directory=args.directory)
-                             ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\aryan\AppData\Local\Programs\Python\Python313\Lib\http\server.py", line 672, in __init__
-    super().__init__(*args, **kwargs)
-    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
-  File "C:\Users\aryan\AppData\Local\Programs\Python\Python313\Lib\socketserver.py", line 766, in __init__
-    self.handle()
-    ~~~~~~~~~~~^^
-  File "C:\Users\aryan\AppData\Local\Programs\Python\Python313\Lib\socketserver.py", line 697, in process_request_thread
-    self.finish_request(request, client_address)
-    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\aryan\AppData\Local\Programs\Python\Python313\Lib\http\server.py", line 436, in handle
-    self.handle_one_request()
-    ~~~~~~~~~~~~~~~~~~~~~~~^^
-  File "C:\Users\aryan\AppData\Local\Programs\Python\Python313\Lib\http\server.py", line 1320, in finish_request
-    self.RequestHandlerClass(request, client_address, self,
-    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                             directory=args.directory)
-                             ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\aryan\AppData\Local\Programs\Python\Python313\Lib\http\server.py", line 672, in __init__
-    super().__init__(*args, **kwargs)
-    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
-  File "C:\Users\aryan\AppData\Local\Programs\Python\Python313\Lib\socketserver.py", line 766, in __init__
-    self.handle()
-    ~~~~~~~~~~~^^
-  File "C:\Users\aryan\AppData\Local\Programs\Python\Python313\Lib\http\server.py", line 436, in handle
-    self.handle_one_request()
-    ~~~~~~~~~~~~~~~~~~~~~~~^^
-  File "C:\Users\aryan\AppData\Local\Programs\Python\Python313\Lib\http\server.py", line 404, in handle_one_request
-    self.raw_requestline = self.rfile.readline(65537)
-                           ~~~~~~~~~~~~~~~~~~~^^^^^^^
-  File "C:\Users\aryan\AppData\Local\Programs\Python\Python313\Lib\socket.py", line 719, in readinto
-    return self._sock.recv_into(b)
-           ~~~~~~~~~~~~~~~~~~~~^^^
-  File "C:\Users\aryan\AppData\Local\Programs\Python\Python313\Lib\http\server.py", line 404, in handle_one_request
-    self.raw_requestline = self.rfile.readline(65537)
-                           ~~~~~~~~~~~~~~~~~~~^^^^^^^
-  File "C:\Users\aryan\AppData\Local\Programs\Python\Python313\Lib\socket.py", line 719, in readinto
-    return self._sock.recv_into(b)
-           ~~~~~~~~~~~~~~~~~~~~^^^
-ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
----
-ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
----
-::1 - - [21/Dec/2025 16:01:58] "GET / HTTP/1.1" 304 -
-::1 - - [21/Dec/2025 16:01:58] "GET /flutter_service_worker.js?v=535983851 HTTP/1.1" 200 -
-::1 - - [21/Dec/2025 16:01:58] code 404, message File not found
-::1 - - [21/Dec/2025 16:01:58] "GET /icons/Icon-192.png HTTP/1.1" 404 -
-::1 - - [21/Dec/2025 16:01:58] "GET /main.dart.js HTTP/1.1" 200 -
-::1 - - [21/Dec/2025 16:01:58] "GET /index.html HTTP/1.1" 200 -
-::1 - - [21/Dec/2025 16:01:58] "GET /flutter_bootstrap.js HTTP/1.1" 200 -
-::1 - - [21/Dec/2025 16:01:58] "GET /assets/AssetManifest.bin.json HTTP/1.1" 200 -
-::1 - - [21/Dec/2025 16:01:58] "GET /assets/FontManifest.json HTTP/1.1" 200 -
-::1 - - [21/Dec/2025 16:01:58] "GET /flutter_service_worker.js?v=535983851 HTTP/1.1" 304 -
-::1 - - [21/Dec/2025 16:01:59] "GET /assets/fonts/MaterialIcons-Regular.otf HTTP/1.1" 200 -
-::1 - - [21/Dec/2025 16:04:00] "GET / HTTP/1.1" 304 -
-::1 - - [21/Dec/2025 16:04:00] code 404, message File not found
-::1 - - [21/Dec/2025 16:04:00] "GET /icons/Icon-192.png HTTP/1.1" 404 -
-::1 - - [21/Dec/2025 16:04:02] "GET /flutter_service_worker.js?v=535983851 HTTP/1.1" 304 -
-::ffff:192.168.1.3 - - [21/Dec/2025 16:05:01] "GET / HTTP/1.1" 200 -
-::ffff:192.168.1.3 - - [21/Dec/2025 16:05:01] "GET /flutter_bootstrap.js HTTP/1.1" 304 -
-::ffff:192.168.1.3 - - [21/Dec/2025 16:05:01] "GET /main.dart.js HTTP/1.1" 304 -
-::ffff:192.168.1.3 - - [21/Dec/2025 16:05:02] "GET /assets/FontManifest.json HTTP/1.1" 304 -
-::ffff:192.168.1.3 - - [21/Dec/2025 16:05:02] "GET /assets/packages/cupertino_icons/assets/CupertinoIcons.ttf HTTP/1.1" 304 -
-::ffff:192.168.1.3 - - [21/Dec/2025 16:05:02] "GET /assets/fonts/MaterialIcons-Regular.otf HTTP/1.1" 304 -
-::1 - - [21/Dec/2025 16:05:57] "GET / HTTP/1.1" 304 -
-::1 - - [21/Dec/2025 16:05:57] code 404, message File not found
-::1 - - [21/Dec/2025 16:05:57] "GET /icons/Icon-192.png HTTP/1.1" 404 -
-::1 - - [21/Dec/2025 16:05:59] "GET /flutter_service_worker.js?v=535983851 HTTP/1.1" 304 -
-::ffff:192.168.1.5 - - [21/Dec/2025 16:07:53] "GET / HTTP/1.1" 200 -
-::ffff:192.168.1.5 - - [21/Dec/2025 16:07:53] "GET /flutter_bootstrap.js HTTP/1.1" 200 -
-::ffff:192.168.1.5 - - [21/Dec/2025 16:07:53] "GET /main.dart.js HTTP/1.1" 200 -
-::ffff:192.168.1.5 - - [21/Dec/2025 16:07:53] "GET /assets/FontManifest.json HTTP/1.1" 200 -
-::ffff:192.168.1.5 - - [21/Dec/2025 16:07:53] code 404, message File not found
-::ffff:192.168.1.5 - - [21/Dec/2025 16:07:53] "GET /favicon.ico HTTP/1.1" 404 -
-::ffff:192.168.1.5 - - [21/Dec/2025 16:07:53] "GET /assets/fonts/MaterialIcons-Regular.otf HTTP/1.1" 200 -
-::ffff:192.168.1.5 - - [21/Dec/2025 16:07:53] "GET /assets/assets/fonts/Roboto-Regular.ttf HTTP/1.1" 200 -
-::ffff:192.168.1.5 - - [21/Dec/2025 16:07:53] "GET /assets/assets/fonts/Roboto-Bold.ttf HTTP/1.1" 200 -
-::ffff:192.168.1.5 - - [21/Dec/2025 16:07:53] "GET /assets/assets/fonts/Roboto-Medium.ttf HTTP/1.1" 200 -
-::ffff:192.168.1.5 - - [21/Dec/2025 16:07:53] "GET /assets/packages/cupertino_icons/assets/CupertinoIcons.ttf HTTP/1.1" 200 -
-::1 - - [21/Dec/2025 16:09:39] "GET / HTTP/1.1" 304 -
-::1 - - [21/Dec/2025 16:09:39] code 404, message File not found
-::1 - - [21/Dec/2025 16:09:39] "GET /icons/Icon-192.png HTTP/1.1" 404 -
-::1 - - [21/Dec/2025 16:09:41] "GET /flutter_service_worker.js?v=535983851 HTTP/1.1" 304 -
-::1 - - [21/Dec/2025 16:12:27] code 404, message File not found
-::1 - - [21/Dec/2025 16:12:27] "GET /icons/Icon-192.png HTTP/1.1" 404 -
-::1 - - [21/Dec/2025 16:12:29] "GET /flutter_service_worker.js?v=535983851 HTTP/1.1" 304 -
-
----
-change the DEPLOYMENT.md as per our current project scope and review the whole project for necessary changes and procedure during the deployment process
-
----
-i want you to update all the docs/ files for documentation (only the one's which are there already) for our latest project condition. Those files were created when the project was just started and by then, many changes have occurred, including feature addition, feature deletion (like maps api).. etc, i want you to update those docs in that manner and make them upto date to our current project condition
-
----
-remove unnecessary files from the project (Project directory cleanup)
-
----
-create a file to address and answer all my queries that i asked you

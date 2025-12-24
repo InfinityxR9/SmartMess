@@ -1,11 +1,15 @@
+---- **ANSWER ALL THE QUESTIONS ASKED BELOW AND PERFORM TASKS AS DESCRIBED** ----
+
 show mess manager name and email in student profile and manager profile
 Integrate create menu in manager completely and start integrating "show menu" in student ui
+---
 
 change in how reviews are stored in database and shown in manager's UI:
     - strucuture should be (in DB): reviews/<messId>/<date>/<review itself>
     - reviews submitting on the today's date and current slot (IMPORTANT!), like lunch reviews for 12-2pm... and so, should be visible at the managers side only. 
     - the point is, reviews submitted yesterday should not be visible today, and reviews submitted this morning for breakfast should not be visible now at lunch time.
 
+---
 The Predictions should be refereshed at the 15 minutes interval slots, Since we're collecting data for students going inside only, not coming out, so we perform predictions based on the data of how many students were inside the mess in last 15 minutes only.
 
 Eg, Lunch starts at 12pm and ends at 2pm, so the predictions will be refereshed at following slots,
@@ -14,18 +18,20 @@ Eg, Lunch starts at 12pm and ends at 2pm, so the predictions will be refereshed 
     and so on...
 
 This is a critical bug and feature enhancement that needs to be done.
+---
 
 Problem: When showing the predictions on the student ui end, don't just hit the /predict API, also train the model on the spot using the data for that specific 15 minute slot, and also predict using that data/model.
+---
 
 Scanning Problem still persists, can't open the camera in the web on mobile (didn't ask for permissions too) and thus marking attendance by qr scanning is not working.
-
-Remove unneccesary print statements in frontend.
+---
 
 Also make sure the model is trained on the spot using the appropriate real-database data (Not dummy data or inappropriate data (like using oak mess data also for alder predictions), ensure there is mess isolation)
+---
 
-On the web, using manager ui, i marked attendance for 1000 anonymous students in alder, trained the model manually, restarted backend, then reloaded the frontend ui, and when i saw the predictions, it was still like 0% students expected despite marking of 1000 students , Additionally, i saw this error in the web console as   [Failed to load resource: net::ERR_BLOCKED_BY_CLIENT firestore.googleapis…e&zx=keup4bw8e77x:1] 
+On the web, using manager ui, i marked attendance for 1000 anonymous students in alder, trained the model manually, restarted backend, then reloaded the frontend ui, and when i saw the predictions, it was still like 0% students expected despite marking of 1000 students , Additionally, i saw this error in the web console as   [Failed to load resource: net::ERR_BLOCKED_BY_CLIENT firestore.googleapis…e&zx=keup4bw8e77x:1] AND:
 
-This was in the terminal of frontend server:
+This was in the terminal of frontend server, read this and find out why the errors were there and fix them:
 ::1 - - [24/Dec/2025 20:41:19] "GET / HTTP/1.1" 200 -
 ::1 - - [24/Dec/2025 20:41:19] "GET /flutter_bootstrap.js HTTP/1.1" 200 -
 ::1 - - [24/Dec/2025 20:41:19] "GET /flutter_service_worker.js?v=290296797 HTTP/1.1" 200 -
@@ -117,5 +123,3 @@ This was in the terminal of frontend server:
 ::1 - - [24/Dec/2025 21:20:18] "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 -
 ::1 - - [24/Dec/2025 21:20:18] code 404, message File not found
 ::1 - - [24/Dec/2025 21:20:18] "GET /flutter.js.map HTTP/1.1" 404 -
-
-In real production build, we'll be needing to show the predictions in the "mess-open" timings only, but for development and testing purpose i need to see the predictions, how do i achieve that? gimme some way and suggestion.
