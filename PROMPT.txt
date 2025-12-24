@@ -1,7 +1,4 @@
------------ **PROBLEMS TO BE ADDRESSED** -----------------
-
-camera error, still not accessible, keep in mind that we're only building the web version for our project as of now, no ios/android, hence make sure that the CAMERA is accessible and the qr code is scannable and the attendance can be marked, perfectly, NO BLOATS, I WANT 100% ACCURACY
----
+---- **ANSWER ALL THE QUESTIONS ASKED BELOW AND PERFORM TASKS AS DESCRIBED** ----
 
 only total attendance is visible on manager analytics, everything including, total students in, crowd % (can be calculated from capacity fetching from database), predictions, reviews, analysis should be visible, and also should be visible on the student predictions side also
 
@@ -9,13 +6,6 @@ Also make available different statistics available and shown in the managers UI 
 
 ---
 additionally, the students who marked attendance are shown in the qr section of manager UI, i also want that the analytics section of manager should also show the marked attendance in slots of that day (can use dropdowns in breakfast, lunch, dinner individually, with the name of the students displayed, just like it's shown in the QR code section of manager UI)
-
----
-
-What is SECRET_KEY=your-secret-key-here in .env.example, how do i get its value and fill there?
----
-
-how would i get the Prediction API URL in frontend/lib/services/prediction_service.dart to be put during the deployment? (for now, its localhost:8080, where the backend server is running)
 
 ---
 
@@ -31,21 +21,20 @@ Predictions: Keep for 3 months (ML training data)
 Sessions: Archive after 6 months
 ---
 
-Additionally, i'd earlier changed the firebase rules to:
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    // Allow unauthenticated read access to loginCredentials for login
-    match /loginCredentials/{document=**} {
-      allow read;
-    }
- 
-    // Allow all other collections (temporary - tighten later)
-    match /{document=**} {
-      allow read, write: if true;
-    }
-  }
-}
+show mess manager name and email in student profile and manager profile
 
-because the already written rule was not working properly, (unable to access the database...), in the database_schema.md, there's a different firestore security rules given, would i need to change that? or let it be this rule and don't change? Suggest that would definitely work and won't affect the performance of the application and also the security concerns are considered
 ---
+Integrate create menu in manager completely and start integrating "show menu" in student ui
+---
+
+change in how reviews are stored in database and shown in manager's UI:
+    - strucuture should be (in DB): reviews/<messId>/<date>/<slot as breakfast/lunch/dinner>/<review itself>
+    - reviews submitting on the today's date and current slot (IMPORTANT!), like lunch reviews for 12-2pm... and so, should be visible at the managers side only. 
+    - the point is, reviews submitted yesterday should not be visible today, and reviews submitted this morning for breakfast should not be visible now at lunch time. (This should be implemented by the slot collection in that date)
+
+---
+
+Scanning Problem still persists, can't open the camera in the web on mobile (didn't ask for permissions too) and thus marking attendance by qr scanning is not working.
+---
+
+On the web, using manager ui, i marked attendance for 1000 anonymous students in alder, trained the model manually, restarted backend, then reloaded the frontend ui, and when i saw the predictions, it was still like 0% students expected despite marking of 1000 students , Additionally, i saw this error in the web console as   [Failed to load resource: net::ERR_BLOCKED_BY_CLIENT firestore.googleapis…e&zx=keup4bw8e77x:1] AND:

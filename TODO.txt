@@ -1,6 +1,7 @@
 [NOT FOR DAKSH RATHI]
 Prediction API URL in frontend/lib/services/prediction_service.dart
 Cloud Run Endpoint after deployment
+SECRET_KEY=your-secret-key-here in .env.example
 
 Should Create
 backend/.env (from .env.example)
