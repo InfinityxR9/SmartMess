@@ -10,10 +10,13 @@ class UnifiedAuthProvider extends ChangeNotifier {
   String? _userId;
   String? _userType; // 'student' or 'manager'
   String? _userName;
+  String? _userEmail; // For both students and managers
   String? _enrollmentId; // For students
   String? _messId;
   String? _messName;
   String? _messCode;
+  String? _messManagerName; // Mess manager's name
+  String? _messManagerEmail; // Mess manager's email
   List<String> _assignedMesses = []; // For managers
   bool _isLoading = false;
   String? _error;
@@ -22,10 +25,13 @@ class UnifiedAuthProvider extends ChangeNotifier {
   String? get userId => _userId;
   String? get userType => _userType;
   String? get userName => _userName;
+  String? get userEmail => _userEmail;
   String? get enrollmentId => _enrollmentId;
   String? get messId => _messId;
   String? get messName => _messName;
   String? get messCode => _messCode;
+  String? get messManagerName => _messManagerName;
+  String? get messManagerEmail => _messManagerEmail;
   List<String> get assignedMesses => _assignedMesses;
   bool get isLoading => _isLoading;
   String? get error => _error;
@@ -71,10 +77,13 @@ class UnifiedAuthProvider extends ChangeNotifier {
       _userId = userData['userId'] as String;
       _userType = 'student';
       _userName = userData['name'] as String?;
+      _userEmail = userData['email'] as String?;
       _enrollmentId = enrollmentId.toUpperCase();
       _messId = messInfo['messId'] as String;
       _messName = messInfo['name'] as String?;
       _messCode = messInfo['messCode'] as String?;
+      _messManagerName = messInfo['managerName'] as String?;
+      _messManagerEmail = messInfo['managerEmail'] as String?;
       _isLoading = false;
       _error = null;
 
@@ -126,9 +135,12 @@ class UnifiedAuthProvider extends ChangeNotifier {
       _userId = userData['userId'] as String;
       _userType = 'manager';
       _userName = userData['name'] as String?;
+      _userEmail = userData['email'] as String?;
       _messId = messInfo['messId'] as String;
       _messName = messInfo['name'] as String?;
       _messCode = messInfo['messCode'] as String?;
+      _messManagerName = userData['name'] as String?;
+      _messManagerEmail = userData['email'] as String?;
       _isLoading = false;
       _error = null;
 

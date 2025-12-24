@@ -7,6 +7,8 @@ import 'package:smart_mess/screens/manual_attendance_screen.dart';
 import 'package:smart_mess/screens/menu_creation_screen.dart';
 import 'package:smart_mess/screens/menu_screen.dart';
 import 'package:smart_mess/screens/analytics_screen.dart';
+import 'package:smart_mess/screens/analytics_enhanced_screen.dart';
+import 'package:smart_mess/screens/student_analytics_predictions_screen.dart';
 import 'package:smart_mess/screens/rating_screen.dart';
 import 'package:smart_mess/screens/prediction_screen.dart';
 
@@ -282,6 +284,18 @@ class _HomeScreenState extends State<HomeScreen> {
                               );
                             },
                           ),
+                          _buildActionCard(
+                            icon: Icons.bar_chart,
+                            title: 'Analytics',
+                            color: Color(0xFF9C27B0),
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => StudentAnalyticsPredictionsScreen(),
+                                ),
+                              );
+                            },
+                          ),
                         ],
                       ),
                     ] else ...[
@@ -352,7 +366,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   context.read<UnifiedAuthProvider>();
                               Navigator.of(context).push(
                                 MaterialPageRoute(
-                                  builder: (context) => AnalyticsScreen(
+                                  builder: (context) => AnalyticsEnhancedScreen(
                                     messId: authProvider.messId ?? '',
                                   ),
                                 ),
