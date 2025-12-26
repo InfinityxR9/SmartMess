@@ -19,6 +19,7 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
   DateTime _selectedDate = DateTime.now();
   String _selectedMeal = 'breakfast';
   Map<String, dynamic>? _standardMenu;
+  bool _hasCustomOverride = false;
 
   bool _isSaving = false;
   bool _isLoadingMenu = true;
@@ -100,14 +101,20 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
           .get();
 
       final data = doc.data();
-      final override = data?[ _selectedMeal ] as String?;
+      final override = data?[_selectedMeal] as String?;
       final standard = _standardMenuText();
       if (mounted) {
-        _menuController.text = (override != null && override.isNotEmpty) ? override : standard;
+        setState(() {
+          _menuController.text = standard;
+          _hasCustomOverride = override != null && override.isNotEmpty;
+        });
       }
     } catch (e) {
       if (mounted) {
-        _menuController.text = _standardMenuText();
+        setState(() {
+          _menuController.text = _standardMenuText();
+          _hasCustomOverride = false;
+        });
       }
     }
   }
@@ -220,7 +227,7 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Edit Standard Menu',
+                        'Update Menu for One Meal',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -228,7 +235,7 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Update a single meal for a specific day. Other meals stay unchanged.',
+                        'Choose the date and meal type. Only that meal changes for the selected date.',
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey[600],
@@ -278,8 +285,8 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
                 controller: _menuController,
                 maxLines: 3,
                 decoration: InputDecoration(
-                  labelText: '$mealLabel Menu',
-                  hintText: 'Edit the standard menu items',
+                  labelText: 'Custom $mealLabel Menu (optional)',
+                  hintText: 'Start from the standard menu and edit only this meal',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -287,6 +294,18 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+              if (_hasCustomOverride)
+                Card(
+                  color: Colors.orange.shade50,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text(
+                      'A custom menu already exists for this date and meal. Saving will replace it.',
+                      style: TextStyle(color: Colors.orange.shade900, fontSize: 12),
+                    ),
+                  ),
+                ),
+              if (_hasCustomOverride) const SizedBox(height: 16),
               Card(
                 color: Colors.grey.shade50,
                 child: Padding(
