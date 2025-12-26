@@ -8,26 +8,13 @@ import 'package:smart_mess/screens/student_analytics_predictions_screen.dart';
 import 'package:smart_mess/utils/meal_time.dart';
 import 'package:smart_mess/widgets/reviews_tab.dart';
 
-class StudentPortalTabsScreen extends StatefulWidget {
+class StudentPortalTabsScreen extends StatelessWidget {
   final int initialIndex;
 
   const StudentPortalTabsScreen({
     Key? key,
-    this.initialIndex = 0,
+    this.initialIndex = 1,
   }) : super(key: key);
-
-  @override
-  State<StudentPortalTabsScreen> createState() => _StudentPortalTabsScreenState();
-}
-
-class _StudentPortalTabsScreenState extends State<StudentPortalTabsScreen> {
-  int _selectedIndex = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedIndex = widget.initialIndex.clamp(0, 1);
-  }
 
   void _showStudentActions(BuildContext context, UnifiedAuthProvider authProvider) {
     final rootContext = context;
@@ -95,159 +82,59 @@ class _StudentPortalTabsScreenState extends State<StudentPortalTabsScreen> {
     );
   }
 
-  Widget _buildTabBox({
-    required IconData icon,
-    required String title,
-    required Color color,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          color: isSelected ? color.withOpacity(0.15) : Colors.grey.shade50,
-          border: Border.all(
-            color: isSelected ? color : Colors.grey.shade300,
-            width: isSelected ? 1.4 : 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: (isSelected ? color : Colors.black).withOpacity(isSelected ? 0.18 : 0.06),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 32, color: color),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: isSelected ? color : Colors.black87,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<UnifiedAuthProvider>();
     final messId = authProvider.messId ?? '';
     final messName = authProvider.messName ?? 'Mess';
-    final managerName = authProvider.messManagerName ?? 'Not Assigned';
-    final managerEmail = authProvider.messManagerEmail ?? '';
-    final managerLine = managerEmail.isNotEmpty ? '$managerName - $managerEmail' : managerName;
+    final tabIndex = initialIndex < 0 ? 0 : initialIndex > 2 ? 2 : initialIndex;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '$messName - Student Portal',
-              overflow: TextOverflow.ellipsis,
+    return DefaultTabController(
+      length: 3,
+      initialIndex: tabIndex,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            '$messName - Student Portal',
+            overflow: TextOverflow.ellipsis,
+          ),
+          toolbarHeight: 72,
+          elevation: 0,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.more_vert),
+              onPressed: () => _showStudentActions(context, authProvider),
             ),
-            Text(
-              'Manager: $managerLine',
-              style: const TextStyle(fontSize: 12, color: Colors.white70),
-              overflow: TextOverflow.ellipsis,
+          ],
+          bottom: const TabBar(
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
+            indicatorColor: Colors.white,
+            tabs: [
+              Tab(text: 'Reviews'),
+              Tab(text: 'Predictions'),
+              Tab(text: 'Analytics'),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            ReviewsTab(messId: messId),
+            StudentAnalyticsPredictionsScreen(
+              includeScaffold: false,
+              showAnalytics: false,
+              showPredictions: true,
+              showReviews: false,
+            ),
+            StudentAnalyticsPredictionsScreen(
+              includeScaffold: false,
+              showAnalytics: true,
+              showPredictions: false,
+              showReviews: false,
             ),
           ],
         ),
-        toolbarHeight: 72,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.more_vert),
-            onPressed: () => _showStudentActions(context, authProvider),
-          ),
-        ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            child: GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              children: [
-                _buildTabBox(
-                  icon: Icons.insights,
-                  title: 'Analysis + Prediction',
-                  color: const Color(0xFF6200EE),
-                  isSelected: _selectedIndex == 0,
-                  onTap: () {
-                    setState(() {
-                      _selectedIndex = 0;
-                    });
-                  },
-                ),
-                _buildTabBox(
-                  icon: Icons.rate_review,
-                  title: 'Review',
-                  color: const Color(0xFFFF6B6B),
-                  isSelected: _selectedIndex == 1,
-                  onTap: () {
-                    setState(() {
-                      _selectedIndex = 1;
-                    });
-                  },
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: IndexedStack(
-              index: _selectedIndex,
-              children: [
-                StudentAnalyticsPredictionsScreen(
-                  includeScaffold: false,
-                  showReviews: false,
-                ),
-                ReviewsTab(messId: messId),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class StudentReviewsScreen extends StatelessWidget {
-  final String messId;
-
-  const StudentReviewsScreen({
-    Key? key,
-    required this.messId,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Reviews'),
-        elevation: 0,
-      ),
-      body: ReviewsTab(messId: messId),
     );
   }
 }

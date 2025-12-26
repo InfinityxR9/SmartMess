@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:smart_mess/providers/unified_auth_provider.dart';
 import 'package:smart_mess/services/prediction_service.dart';
 import 'package:smart_mess/models/prediction_model.dart';
+import 'package:smart_mess/utils/meal_time.dart';
 
 class PredictionScreen extends StatefulWidget {
   const PredictionScreen({Key? key}) : super(key: key);
@@ -14,12 +15,28 @@ class PredictionScreen extends StatefulWidget {
 class _PredictionScreenState extends State<PredictionScreen> {
   final PredictionService _predictionService = PredictionService();
   late Future<PredictionResult?> _predictions;
+  int? _messCapacity;
 
   @override
   void initState() {
     super.initState();
     final authProvider = context.read<UnifiedAuthProvider>();
-    _predictions = _predictionService.getPrediction(authProvider.messId ?? '');
+    _messCapacity = authProvider.messCapacity;
+    final slot = getCurrentMealSlot();
+    _predictions = _loadPredictions(authProvider.messId ?? '', slot?.type);
+  }
+
+  Future<PredictionResult?> _loadPredictions(String messId, String? slot) async {
+    await _predictionService.trainModel(
+      messId,
+      slot: slot,
+      capacity: _messCapacity,
+    );
+    return _predictionService.getPrediction(
+      messId,
+      slot: slot,
+      capacity: _messCapacity,
+    );
   }
 
   @override

@@ -7,15 +7,20 @@ import 'package:smart_mess/services/prediction_service.dart';
 import 'package:smart_mess/services/review_service.dart';
 import 'package:smart_mess/models/prediction_model.dart';
 import 'package:smart_mess/utils/meal_time.dart';
+import 'package:smart_mess/widgets/reviews_tab.dart';
 
 class StudentAnalyticsPredictionsScreen extends StatefulWidget {
   final bool includeScaffold;
+  final bool showAnalytics;
+  final bool showPredictions;
   final bool showReviews;
 
   const StudentAnalyticsPredictionsScreen({
     Key? key,
     this.includeScaffold = true,
-    this.showReviews = true,
+    this.showAnalytics = true,
+    this.showPredictions = true,
+    this.showReviews = false,
   }) : super(key: key);
 
   @override
@@ -31,6 +36,7 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
   MealSlotInfo? _currentSlot;
   Timer? _slotTimer;
   String _messId = '';
+  int? _messCapacity;
   bool _hasInitialized = false;
 
   @override
@@ -38,6 +44,7 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
     super.initState();
     final authProvider = context.read<UnifiedAuthProvider>();
     _messId = authProvider.messId ?? '';
+    _messCapacity = authProvider.messCapacity;
     _refreshSlot();
     _slotTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       if (mounted) {
@@ -66,15 +73,27 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
         _predictions = Future.value(null);
       } else {
         final slotType = _currentSlot!.type;
-        _analyticsData = _fetchAnalyticsData(_messId, slotType);
-        _predictions = _loadPredictions(slotType);
+        _analyticsData = widget.showAnalytics
+            ? _fetchAnalyticsData(_messId, slotType)
+            : Future.value(_emptyAnalyticsData());
+        _predictions = widget.showPredictions
+            ? _loadPredictions(slotType)
+            : Future.value(null);
       }
     });
   }
 
   Future<PredictionResult?> _loadPredictions(String slotType) async {
-    _predictionService.trainModel(_messId, slot: slotType);
-    return _predictionService.getPrediction(_messId, slot: slotType);
+    await _predictionService.trainModel(
+      _messId,
+      slot: slotType,
+      capacity: _messCapacity,
+    );
+    return _predictionService.getPrediction(
+      _messId,
+      slot: slotType,
+      capacity: _messCapacity,
+    );
   }
 
   Map<String, dynamic> _emptyAnalyticsData() {
@@ -159,10 +178,114 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildPredictionsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Upcoming 15-Min Slot Predictions',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        FutureBuilder<PredictionResult?>(
+          future: _predictions,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            final prediction = snapshot.data;
+            if (prediction == null || prediction.predictions.isEmpty) {
+              return Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text('No predictions available. Check back during meal times.'),
+              );
+            }
+
+            return Column(
+              children: prediction.predictions.map((pred) {
+                final isBad = pred.crowdPercentage > 70;
+                final isModerate = pred.crowdPercentage > 40;
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: isBad
+                          ? Colors.red.shade300
+                          : isModerate
+                              ? Colors.orange.shade300
+                              : Colors.green.shade300,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                    color: isBad
+                        ? Colors.red.shade50
+                        : isModerate
+                            ? Colors.orange.shade50
+                            : Colors.green.shade50,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            pred.timeSlot,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${pred.predictedCrowd.toStringAsFixed(0)} students expected',
+                            style: TextStyle(color: Colors.grey[700], fontSize: 12),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        '${pred.crowdPercentage.toStringAsFixed(0)}%',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: isBad
+                              ? Colors.red
+                              : isModerate
+                                  ? Colors.orange
+                                  : Colors.green,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContent({
+    required bool showAnalytics,
+    required bool showPredictions,
+    required bool showReviews,
+  }) {
     final slot = _currentSlot;
-    final content = SingleChildScrollView(
+    final noDataMessage = showAnalytics && showPredictions
+        ? 'No analytics or predictions available outside meal hours'
+        : showAnalytics
+            ? 'No analytics available outside meal hours'
+            : showPredictions
+                ? 'No predictions available outside meal hours'
+                : 'No data available for this view';
+
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -191,7 +314,9 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
           ),
           const SizedBox(height: 20),
           if (slot == null)
-            const Text('No analytics or predictions available outside meal hours')
+            Text(noDataMessage)
+          else if (!showAnalytics && showPredictions)
+            _buildPredictionsSection()
           else
             FutureBuilder<Map<String, dynamic>>(
               future: _analyticsData,
@@ -209,137 +334,56 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Date: ${data['date'] ?? ''}',
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _StatCard(
-                            title: 'Attendance',
-                            value: '${data['totalAttendance']?.toString() ?? '0'}/${data['capacity']}',
-                            icon: Icons.people,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _StatCard(
-                            title: 'Crowd %',
-                            value: '${data['crowdPercentage']}%',
-                            icon: Icons.trending_up,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _StatCard(
-                            title: 'Reviews',
-                            value: '${data['reviewCount']?.toString() ?? '0'}',
-                            icon: Icons.star,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _StatCard(
-                            title: 'Avg Rating',
-                            value: '${data['avgRating'] ?? '0'}',
-                            icon: Icons.rate_review,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'Upcoming 15-Min Slot Predictions',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 12),
-                    FutureBuilder<PredictionResult?>(
-                      future: _predictions,
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(child: CircularProgressIndicator());
-                        }
-
-                        final prediction = snapshot.data;
-                        if (prediction == null || prediction.predictions.isEmpty) {
-                          return Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey.shade300),
-                              borderRadius: BorderRadius.circular(8),
+                    if (showAnalytics) ...[
+                      Text(
+                        'Date: ${data['date'] ?? ''}',
+                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _StatCard(
+                              title: 'Attendance',
+                              value:
+                                  '${data['totalAttendance']?.toString() ?? '0'}/${data['capacity']}',
+                              icon: Icons.people,
                             ),
-                            child: const Text('No predictions available. Check back during meal times.'),
-                          );
-                        }
-
-                        return Column(
-                          children: prediction.predictions.map((pred) {
-                            final isBad = pred.crowdPercentage > 70;
-                            final isModerate = pred.crowdPercentage > 40;
-
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: isBad
-                                      ? Colors.red.shade300
-                                      : isModerate
-                                          ? Colors.orange.shade300
-                                          : Colors.green.shade300,
-                                ),
-                                borderRadius: BorderRadius.circular(8),
-                                color: isBad
-                                    ? Colors.red.shade50
-                                    : isModerate
-                                        ? Colors.orange.shade50
-                                        : Colors.green.shade50,
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        pred.timeSlot,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        '${pred.predictedCrowd.toStringAsFixed(0)} students expected',
-                                        style: TextStyle(color: Colors.grey[700], fontSize: 12),
-                                      ),
-                                    ],
-                                  ),
-                                  Text(
-                                    '${pred.crowdPercentage.toStringAsFixed(0)}%',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: isBad
-                                          ? Colors.red
-                                          : isModerate
-                                              ? Colors.orange
-                                              : Colors.green,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                        );
-                      },
-                    ),
-                    if (widget.showReviews) ...[
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _StatCard(
+                              title: 'Crowd %',
+                              value: '${data['crowdPercentage']}%',
+                              icon: Icons.trending_up,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _StatCard(
+                              title: 'Reviews',
+                              value: '${data['reviewCount']?.toString() ?? '0'}',
+                              icon: Icons.star,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _StatCard(
+                              title: 'Avg Rating',
+                              value: '${data['avgRating'] ?? '0'}',
+                              icon: Icons.rate_review,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    if (showAnalytics && showPredictions) const SizedBox(height: 24),
+                    if (showPredictions) _buildPredictionsSection(),
+                    if (showReviews) ...[
                       const SizedBox(height: 24),
                       const Text(
                         'Recent Reviews',
@@ -407,6 +451,56 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
             ),
         ],
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.includeScaffold &&
+        widget.showAnalytics &&
+        widget.showPredictions &&
+        !widget.showReviews) {
+      return DefaultTabController(
+        length: 3,
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('Analytics & Predictions'),
+            elevation: 0,
+            backgroundColor: const Color(0xFF6200EE),
+            bottom: const TabBar(
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.white70,
+              indicatorColor: Colors.white,
+              tabs: [
+                Tab(text: 'Reviews'),
+                Tab(text: 'Predictions'),
+                Tab(text: 'Analytics'),
+              ],
+            ),
+          ),
+          body: TabBarView(
+            children: [
+              ReviewsTab(messId: _messId),
+              _buildContent(
+                showAnalytics: false,
+                showPredictions: true,
+                showReviews: false,
+              ),
+              _buildContent(
+                showAnalytics: true,
+                showPredictions: false,
+                showReviews: false,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final content = _buildContent(
+      showAnalytics: widget.showAnalytics,
+      showPredictions: widget.showPredictions,
+      showReviews: widget.showReviews,
     );
 
     if (!widget.includeScaffold) {

@@ -26,6 +26,9 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
   String? _message;
   bool _isSuccess = false;
   String? _enrollmentId;
+  bool _cameraStarted = !kIsWeb;
+  bool _isStartingCamera = false;
+  String? _cameraError;
 
   @override
   void initState() {
@@ -33,6 +36,8 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
     cameraController = MobileScannerController(
       formats: const [BarcodeFormat.qrCode],
       returnImage: false,
+      autoStart: !kIsWeb,
+      facing: CameraFacing.back,
     );
   }
 
@@ -199,6 +204,92 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
     }
   }
 
+  Future<void> _startCamera() async {
+    if (_isStartingCamera) {
+      return;
+    }
+    setState(() {
+      _isStartingCamera = true;
+      _cameraError = null;
+    });
+
+    try {
+      final args = await cameraController.start();
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _cameraStarted = args != null;
+        _isStartingCamera = false;
+      });
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _cameraError = 'Unable to start camera. Check permissions and try again.';
+        _isStartingCamera = false;
+      });
+    }
+  }
+
+  Widget _buildWebCameraGate() {
+    return Container(
+      color: Colors.black.withValues(alpha: 0.85),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          margin: const EdgeInsets.symmetric(horizontal: 24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.camera_alt, size: 48, color: Color(0xFF6200EE)),
+              const SizedBox(height: 16),
+              const Text(
+                'Enable Camera to Scan',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Click the button below and allow camera access in your browser.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, color: Colors.black54),
+              ),
+              if (_cameraError != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  _cameraError ?? '',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 12, color: Colors.red),
+                ),
+              ],
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                icon: _isStartingCamera
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Icon(Icons.play_arrow),
+                label: Text(_isStartingCamera ? 'Starting...' : 'Start Camera'),
+                onPressed: _isStartingCamera ? null : _startCamera,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -206,6 +297,18 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
         title: Text('Scan QR - ${widget.mealType.toUpperCase()}'),
         elevation: 0,
         backgroundColor: const Color(0xFF6200EE),
+        actions: [
+          if (kIsWeb)
+            IconButton(
+              tooltip: 'Switch Camera',
+              icon: const Icon(Icons.cameraswitch),
+              onPressed: () async {
+                try {
+                  await cameraController.switchCamera();
+                } catch (_) {}
+              },
+            ),
+        ],
       ),
       body: Stack(
         children: [
@@ -352,6 +455,10 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                   ],
                 ),
               ),
+            ),
+          if (kIsWeb && !_cameraStarted && _message == null)
+            Positioned.fill(
+              child: _buildWebCameraGate(),
             ),
         ],
       ),

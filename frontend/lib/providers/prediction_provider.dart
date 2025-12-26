@@ -12,13 +12,30 @@ class PredictionProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  Future<void> fetchPrediction(String messId) async {
+  Future<void> fetchPrediction(
+    String messId, {
+    String? slot,
+    int? capacity,
+  }) async {
     try {
       _isLoading = true;
       _error = null;
       notifyListeners();
 
-      _prediction = await _predictionService.getPrediction(messId);
+      if (messId.isEmpty) {
+        _prediction = null;
+      } else {
+        await _predictionService.trainModel(
+          messId,
+          slot: slot,
+          capacity: capacity,
+        );
+        _prediction = await _predictionService.getPrediction(
+          messId,
+          slot: slot,
+          capacity: capacity,
+        );
+      }
       _isLoading = false;
       notifyListeners();
     } catch (e) {

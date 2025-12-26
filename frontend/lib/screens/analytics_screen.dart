@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:smart_mess/services/attendance_service.dart';
 import 'package:smart_mess/services/prediction_service.dart';
 import 'package:smart_mess/services/review_service.dart';
 import 'package:smart_mess/models/prediction_model.dart';
+import 'package:smart_mess/providers/unified_auth_provider.dart';
+import 'package:smart_mess/utils/meal_time.dart';
 
 class AnalyticsScreen extends StatefulWidget {
   final String messId;
@@ -22,12 +25,28 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   final ReviewService _reviewService = ReviewService();
   late Future<Map<String, int>> _attendanceCounts;
   late Future<PredictionResult?> _predictions;
+  int? _messCapacity;
 
   @override
   void initState() {
     super.initState();
     _attendanceCounts = _attendanceService.getTodayAttendanceCount(widget.messId);
-    _predictions = _predictionService.getPrediction(widget.messId);
+    _messCapacity = context.read<UnifiedAuthProvider>().messCapacity;
+    final slot = getCurrentMealSlot();
+    _predictions = _loadPredictions(slot?.type);
+  }
+
+  Future<PredictionResult?> _loadPredictions(String? slot) async {
+    await _predictionService.trainModel(
+      widget.messId,
+      slot: slot,
+      capacity: _messCapacity,
+    );
+    return _predictionService.getPrediction(
+      widget.messId,
+      slot: slot,
+      capacity: _messCapacity,
+    );
   }
 
   @override

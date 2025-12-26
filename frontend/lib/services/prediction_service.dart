@@ -10,23 +10,32 @@ class PredictionService {
   Future<PredictionResult?> getPrediction(
     String messId, {
     String? slot,
-    bool forceTrain = true,
+    bool forceTrain = false,
+    bool autoTrain = true,
+    bool asyncTrain = true,
     int daysBack = 30,
+    int? capacity,
   }) async {
     try {
       if (messId.isEmpty) {
         return null;
       }
+      final payload = <String, dynamic>{
+        'messId': messId,
+        'devMode': true,
+        'slot': slot,
+        'forceTrain': forceTrain,
+        'autoTrain': autoTrain,
+        'asyncTrain': asyncTrain,
+        'daysBack': daysBack,
+      };
+      if (capacity != null && capacity > 0) {
+        payload['capacity'] = capacity;
+      }
       final response = await http.post(
         Uri.parse('$baseUrl/predict'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'messId': messId,
-          'devMode': true,
-          'slot': slot,
-          'forceTrain': forceTrain,
-          'daysBack': daysBack,
-        }),
+        body: jsonEncode(payload),
       ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
@@ -46,23 +55,32 @@ class PredictionService {
     String messId, {
     String? slot,
     int daysBack = 30,
+    int? capacity,
+    bool asyncTrain = true,
+    bool forceTrain = false,
   }) async {
     try {
       if (messId.isEmpty) {
         return;
       }
+      final payload = <String, dynamic>{
+        'messId': messId,
+        'slot': slot,
+        'daysBack': daysBack,
+        'forceTrain': forceTrain,
+        'devMode': true,
+        'asyncTrain': asyncTrain,
+      };
+      if (capacity != null && capacity > 0) {
+        payload['capacity'] = capacity;
+      }
       await http
           .post(
             Uri.parse('$baseUrl/train'),
             headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'messId': messId,
-              'slot': slot,
-              'daysBack': daysBack,
-              'forceTrain': true,
-            }),
+            body: jsonEncode(payload),
           )
-          .timeout(const Duration(seconds: 15));
+          .timeout(const Duration(seconds: 30));
     } catch (_) {
       // Ignore training errors; predictions handle fallbacks.
     }

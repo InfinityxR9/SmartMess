@@ -30,7 +30,12 @@ class _CrowdDashboardScreenState extends State<CrowdDashboardScreen> {
 
       if (messProvider.selectedMess != null) {
         crowdProvider.listenToCrowdCount(messProvider.selectedMess!.id);
-        predictionProvider.fetchPrediction(messProvider.selectedMess!.id);
+        final slot = getCurrentMealSlot();
+        predictionProvider.fetchPrediction(
+          messProvider.selectedMess!.id,
+          slot: slot?.type,
+          capacity: messProvider.selectedMess!.capacity,
+        );
       }
     });
   }

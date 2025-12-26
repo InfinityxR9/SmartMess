@@ -15,6 +15,7 @@ class UnifiedAuthProvider extends ChangeNotifier {
   String? _messId;
   String? _messName;
   String? _messCode;
+  int? _messCapacity;
   String? _messManagerName; // Mess manager's name
   String? _messManagerEmail; // Mess manager's email
   List<String> _assignedMesses = []; // For managers
@@ -30,6 +31,7 @@ class UnifiedAuthProvider extends ChangeNotifier {
   String? get messId => _messId;
   String? get messName => _messName;
   String? get messCode => _messCode;
+  int? get messCapacity => _messCapacity;
   String? get messManagerName => _messManagerName;
   String? get messManagerEmail => _messManagerEmail;
   List<String> get assignedMesses => _assignedMesses;
@@ -82,6 +84,7 @@ class UnifiedAuthProvider extends ChangeNotifier {
       _messId = messInfo['messId'] as String;
       _messName = messInfo['name'] as String?;
       _messCode = messInfo['messCode'] as String?;
+      _messCapacity = _parseCapacity(messInfo['capacity']);
       _messManagerName = messInfo['managerName'] as String?;
       _messManagerEmail = messInfo['managerEmail'] as String?;
       _isLoading = false;
@@ -139,6 +142,7 @@ class UnifiedAuthProvider extends ChangeNotifier {
       _messId = messInfo['messId'] as String;
       _messName = messInfo['name'] as String?;
       _messCode = messInfo['messCode'] as String?;
+      _messCapacity = _parseCapacity(messInfo['capacity']);
       _messManagerName = userData['name'] as String?;
       _messManagerEmail = userData['email'] as String?;
       _isLoading = false;
@@ -190,6 +194,7 @@ class UnifiedAuthProvider extends ChangeNotifier {
       _messId = null;
       _messName = null;
       _messCode = null;
+      _messCapacity = null;
       _messManagerName = null;
       _messManagerEmail = null;
       _assignedMesses = [];
@@ -211,5 +216,21 @@ class UnifiedAuthProvider extends ChangeNotifier {
       return _assignedMesses.contains(messId);
     }
     return false;
+  }
+
+  int? _parseCapacity(dynamic value) {
+    if (value == null) {
+      return null;
+    }
+    if (value is int) {
+      return value;
+    }
+    if (value is double) {
+      return value.toInt();
+    }
+    if (value is String) {
+      return int.tryParse(value);
+    }
+    return null;
   }
 }

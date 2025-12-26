@@ -39,10 +39,15 @@ class TimeSlotPrediction {
   });
 
   factory TimeSlotPrediction.fromJson(Map<String, dynamic> json) {
+    final predictedCrowd = (json['predicted_crowd'] ?? 0.0).toDouble();
+    final capacity = (json['capacity'] ?? 0.0).toDouble();
+    final crowdPercentage = capacity > 0
+        ? (predictedCrowd / capacity) * 100
+        : (json['crowd_percentage'] ?? 0.0).toDouble();
     return TimeSlotPrediction(
       timeSlot: json['time_slot'] ?? '',
-      predictedCrowd: (json['predicted_crowd'] ?? 0.0).toDouble(),
-      crowdPercentage: (json['crowd_percentage'] ?? 0.0).toDouble(),
+      predictedCrowd: predictedCrowd,
+      crowdPercentage: crowdPercentage,
     );
   }
 }

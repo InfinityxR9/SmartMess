@@ -27,13 +27,13 @@ class ManagerPortalTabsScreen extends StatefulWidget {
 }
 
 class _ManagerPortalTabsScreenState extends State<ManagerPortalTabsScreen> {
-  int _selectedIndex = 1;
+  late int _tabIndex;
 
   @override
   void initState() {
     super.initState();
     final initial = widget.initialIndex;
-    _selectedIndex = initial.clamp(0, 2);
+    _tabIndex = initial < 0 ? 0 : initial > 2 ? 2 : initial;
   }
 
   void _showManagerActions(BuildContext context, UnifiedAuthProvider authProvider) {
@@ -113,135 +113,49 @@ class _ManagerPortalTabsScreenState extends State<ManagerPortalTabsScreen> {
     );
   }
 
-  Widget _buildTabBox({
-    required IconData icon,
-    required String title,
-    required Color color,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          color: isSelected ? color.withOpacity(0.15) : Colors.grey.shade50,
-          border: Border.all(
-            color: isSelected ? color : Colors.grey.shade300,
-            width: isSelected ? 1.4 : 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: (isSelected ? color : Colors.black).withOpacity(isSelected ? 0.18 : 0.06),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 32, color: color),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: isSelected ? color : Colors.black87,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final authProvider = context.read<UnifiedAuthProvider>();
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Manager Portal'),
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.more_vert),
-            onPressed: () => _showManagerActions(context, authProvider),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            child: GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              children: [
-                _buildTabBox(
-                  icon: Icons.rate_review,
-                  title: 'Review',
-                  color: const Color(0xFFFF6B6B),
-                  isSelected: _selectedIndex == 0,
-                  onTap: () {
-                    setState(() {
-                      _selectedIndex = 0;
-                    });
-                  },
-                ),
-                _buildTabBox(
-                  icon: Icons.insights,
-                  title: 'Prediction + Analysis',
-                  color: const Color(0xFF6200EE),
-                  isSelected: _selectedIndex == 1,
-                  onTap: () {
-                    setState(() {
-                      _selectedIndex = 1;
-                    });
-                  },
-                ),
-                _buildTabBox(
-                  icon: Icons.people_alt,
-                  title: 'Attendance',
-                  color: const Color(0xFF03DAC6),
-                  isSelected: _selectedIndex == 2,
-                  onTap: () {
-                    setState(() {
-                      _selectedIndex = 2;
-                    });
-                  },
-                ),
-              ],
+    return DefaultTabController(
+      length: 3,
+      initialIndex: _tabIndex,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Prediction + Analysis'),
+          elevation: 0,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.more_vert),
+              onPressed: () => _showManagerActions(context, authProvider),
             ),
+          ],
+          bottom: const TabBar(
+            isScrollable: true,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
+            indicatorColor: Colors.white,
+            tabs: [
+              Tab(text: 'Review'),
+              Tab(text: 'Prediction + Analysis'),
+              Tab(text: 'Attendance'),
+            ],
           ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: IndexedStack(
-              index: _selectedIndex,
-              children: [
-                ReviewsTab(messId: widget.messId),
-                ManagerAttendanceTab(
-                  messId: widget.messId,
-                  showPredictions: true,
-                  showStudentList: false,
-                ),
-                ManagerAttendanceTab(
-                  messId: widget.messId,
-                  showPredictions: false,
-                  showStudentList: true,
-                ),
-              ],
+        ),
+        body: TabBarView(
+          children: [
+            ReviewsTab(messId: widget.messId),
+            ManagerAttendanceTab(
+              messId: widget.messId,
+              showPredictions: true,
+              showStudentList: false,
             ),
-          ),
-        ],
+            ManagerAttendanceTab(
+              messId: widget.messId,
+              showPredictions: false,
+              showStudentList: true,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -257,12 +171,9 @@ class ManagerReviewsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Reviews'),
-        elevation: 0,
-      ),
-      body: ReviewsTab(messId: messId),
+    return ManagerPortalTabsScreen(
+      messId: messId,
+      initialIndex: 0,
     );
   }
 }
@@ -277,16 +188,9 @@ class ManagerPredictionAnalysisScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Prediction + Analysis'),
-        elevation: 0,
-      ),
-      body: ManagerAttendanceTab(
-        messId: messId,
-        showPredictions: true,
-        showStudentList: false,
-      ),
+    return ManagerPortalTabsScreen(
+      messId: messId,
+      initialIndex: 1,
     );
   }
 }
@@ -301,16 +205,9 @@ class ManagerAttendanceScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Attendance'),
-        elevation: 0,
-      ),
-      body: ManagerAttendanceTab(
-        messId: messId,
-        showPredictions: false,
-        showStudentList: true,
-      ),
+    return ManagerPortalTabsScreen(
+      messId: messId,
+      initialIndex: 2,
     );
   }
 }
@@ -330,10 +227,12 @@ class _ManagerPredictionTabState extends State<ManagerPredictionTab> {
   Timer? _slotTimer;
   late Future<PredictionResult?> _predictions;
   bool _hasInitialized = false;
+  int? _messCapacity;
 
   @override
   void initState() {
     super.initState();
+    _messCapacity = context.read<UnifiedAuthProvider>().messCapacity;
     _refreshSlot();
     _slotTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       if (mounted) {
@@ -366,8 +265,16 @@ class _ManagerPredictionTabState extends State<ManagerPredictionTab> {
   }
 
   Future<PredictionResult?> _loadPredictions(String slotType) async {
-    _predictionService.trainModel(widget.messId, slot: slotType);
-    return _predictionService.getPrediction(widget.messId, slot: slotType);
+    await _predictionService.trainModel(
+      widget.messId,
+      slot: slotType,
+      capacity: _messCapacity,
+    );
+    return _predictionService.getPrediction(
+      widget.messId,
+      slot: slotType,
+      capacity: _messCapacity,
+    );
   }
 
   @override
@@ -512,10 +419,12 @@ class _ManagerAttendanceTabState extends State<ManagerAttendanceTab> {
   late Future<Map<String, dynamic>> _attendanceData;
   Future<PredictionResult?>? _predictions;
   bool _hasInitialized = false;
+  int? _messCapacity;
 
   @override
   void initState() {
     super.initState();
+    _messCapacity = context.read<UnifiedAuthProvider>().messCapacity;
     _refreshSlot();
     _slotTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       if (mounted) {
@@ -553,8 +462,16 @@ class _ManagerAttendanceTabState extends State<ManagerAttendanceTab> {
   }
 
   Future<PredictionResult?> _loadPredictions(String slotType) async {
-    _predictionService.trainModel(widget.messId, slot: slotType);
-    return _predictionService.getPrediction(widget.messId, slot: slotType);
+    await _predictionService.trainModel(
+      widget.messId,
+      slot: slotType,
+      capacity: _messCapacity,
+    );
+    return _predictionService.getPrediction(
+      widget.messId,
+      slot: slotType,
+      capacity: _messCapacity,
+    );
   }
 
   Map<String, dynamic> _emptyAttendanceData() {

@@ -8,7 +8,6 @@ import 'package:smart_mess/screens/menu_creation_screen.dart';
 import 'package:smart_mess/screens/menu_screen.dart';
 import 'package:smart_mess/screens/manager_portal_tabs_screen.dart';
 import 'package:smart_mess/screens/rating_screen.dart';
-import 'package:smart_mess/screens/student_analytics_predictions_screen.dart';
 import 'package:smart_mess/screens/student_portal_tabs_screen.dart';
 import 'package:smart_mess/utils/meal_time.dart';
 
@@ -26,57 +25,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _scrollController.dispose();
     super.dispose();
-  }
-
-  void _showManagerInfoSheet(BuildContext context, UnifiedAuthProvider authProvider) {
-    final managerName = authProvider.messManagerName ?? 'Not Assigned';
-    final managerEmail = authProvider.messManagerEmail ?? 'Not Available';
-    showModalBottomSheet(
-      context: context,
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Mess Manager',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    const Icon(Icons.person, color: Color(0xFF6200EE)),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        managerName,
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(Icons.email, color: Color(0xFF6200EE)),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        managerEmail,
-                        style: const TextStyle(fontSize: 13, color: Colors.black87),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
   }
 
   @override
@@ -269,44 +217,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                               ],
                             ),
-                            if (authProvider.isStudent) ...[
-                              SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  Icon(Icons.admin_panel_settings, color: Color(0xFF6200EE)),
-                                  SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Mess Manager',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey[600],
-                                          ),
-                                        ),
-                                        Text(
-                                          authProvider.messManagerName ?? 'Not Assigned',
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                        if ((authProvider.messManagerEmail ?? '').isNotEmpty)
-                                          Text(
-                                            authProvider.messManagerEmail ?? '',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.grey[500],
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
                           ],
                         ),
                       ),
@@ -386,34 +296,11 @@ class _HomeScreenState extends State<HomeScreen> {
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
-                                  builder: (context) => const StudentAnalyticsPredictionsScreen(
-                                    includeScaffold: true,
-                                    showReviews: false,
+                                  builder: (context) => const StudentPortalTabsScreen(
+                                    initialIndex: 1,
                                   ),
                                 ),
                               );
-                            },
-                          ),
-                          _buildActionCard(
-                            icon: Icons.rate_review,
-                            title: 'Reviews',
-                            color: Color(0xFFFF6B6B),
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) => StudentReviewsScreen(
-                                    messId: authProvider.messId ?? '',
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                          _buildActionCard(
-                            icon: Icons.admin_panel_settings,
-                            title: 'Manager Info',
-                            color: Color(0xFF795548),
-                            onTap: () {
-                              _showManagerInfoSheet(context, authProvider);
                             },
                           ),
                         ],
@@ -435,41 +322,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         mainAxisSpacing: 12,
                         children: [
                           _buildActionCard(
-                            icon: Icons.rate_review,
-                            title: 'Review',
-                            color: Color(0xFFFF6B6B),
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) => ManagerReviewsScreen(
-                                    messId: authProvider.messId ?? '',
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                          _buildActionCard(
-                            icon: Icons.insights,
+                            icon: Icons.show_chart,
                             title: 'Prediction + Analysis',
                             color: Color(0xFF6200EE),
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
                                   builder: (context) => ManagerPredictionAnalysisScreen(
-                                    messId: authProvider.messId ?? '',
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                          _buildActionCard(
-                            icon: Icons.people_alt,
-                            title: 'Attendance',
-                            color: Color(0xFF03DAC6),
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) => ManagerAttendanceScreen(
                                     messId: authProvider.messId ?? '',
                                   ),
                                 ),

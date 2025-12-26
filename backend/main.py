@@ -1,5 +1,6 @@
 import os
 import sys
+import threading
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import firebase_admin
@@ -50,6 +51,39 @@ except Exception as e:
 
 # Initialize TensorFlow prediction service (mess-specific models)
 prediction_service = PredictionService()
+FIRESTORE_AVAILABLE = True
+_TRAINING_IN_PROGRESS = set()
+
+def _disable_firestore_if_needed(error):
+    global FIRESTORE_AVAILABLE
+    if not FIRESTORE_AVAILABLE:
+        return
+    message = str(error).lower()
+    if any(token in message for token in ['invalid_grant', 'metadata', 'jwt', 'token must be']):
+        FIRESTORE_AVAILABLE = False
+        print("[WARN] Firestore disabled due to credential error. Falling back to dummy data.")
+
+def _start_background_training(mess_id, meal_type, days_back, dev_mode, force_train):
+    key = f"{mess_id}:{meal_type}"
+    if key in _TRAINING_IN_PROGRESS:
+        return
+
+    _TRAINING_IN_PROGRESS.add(key)
+
+    def _runner():
+        try:
+            train_mess_model(
+                mess_id=mess_id,
+                meal_type=meal_type,
+                days_back=days_back,
+                dev_mode=dev_mode,
+                force_train=force_train,
+            )
+        finally:
+            _TRAINING_IN_PROGRESS.discard(key)
+
+    thread = threading.Thread(target=_runner, daemon=True)
+    thread.start()
 
 def _has_recent_model(mess_id, max_age_minutes=60):
     """Check if a recent trained model exists for this mess."""
@@ -97,6 +131,17 @@ def normalize_meal_type(meal_type):
     normalized = str(meal_type).strip().lower()
     return normalized if normalized in MEAL_WINDOWS else None
 
+def parse_capacity(value):
+    try:
+        if value is None:
+            return None
+        if isinstance(value, bool):
+            return None
+        capacity = int(value)
+        return capacity if capacity > 0 else None
+    except Exception:
+        return None
+
 def get_slot_window(current_time, meal_type):
     window = MEAL_WINDOWS.get(meal_type)
     if not window:
@@ -108,7 +153,7 @@ def get_slot_window(current_time, meal_type):
 
 def load_attendance_records(mess_id, meal_type, days_back=30):
     """Load attendance records for a mess and specific meal slot over past days."""
-    if not db:
+    if not db or not FIRESTORE_AVAILABLE:
         return []
     records = []
     now = datetime.now()
@@ -153,7 +198,8 @@ def load_attendance_records(mess_id, meal_type, days_back=30):
                             'meal': meal_doc.id,
                             'date': date_str
                         })
-        except Exception:
+        except Exception as e:
+            _disable_firestore_if_needed(e)
             continue
 
     return records
@@ -169,7 +215,7 @@ def train_mess_model(mess_id, meal_type, days_back=30, dev_mode=False, force_tra
             return training_info
 
         attendance_records = []
-        if db:
+        if db and FIRESTORE_AVAILABLE:
             attendance_records = load_attendance_records(
                 mess_id=mess_id,
                 meal_type=meal_type,
@@ -195,6 +241,7 @@ def train_mess_model(mess_id, meal_type, days_back=30, dev_mode=False, force_tra
         else:
             print(f"[WARN] No historical data for {mess_id} ({meal_type}); using existing model")
     except Exception as e:
+        _disable_firestore_if_needed(e)
         print(f"[WARN] Training failed for {mess_id}: {e}")
 
     return training_info
@@ -220,6 +267,8 @@ def predict():
         dev_mode = data.get('devMode', False)  # Allow predictions outside meal times in dev mode
         requested_slot = normalize_meal_type(data.get('slot') or data.get('mealType'))
         force_train = bool(data.get('forceTrain', True))
+        auto_train = bool(data.get('autoTrain', True))
+        async_train = bool(data.get('asyncTrain', True))
         try:
             days_back = max(1, int(data.get('daysBack', 30)))
         except Exception:
@@ -268,7 +317,7 @@ def predict():
         # Get current attendance count for the 15-minute slot
         current_count = 0
         
-        if db:
+        if db and FIRESTORE_AVAILABLE:
             try:
                 students_ref = (
                     db.collection('attendance')
@@ -280,26 +329,34 @@ def predict():
                 students = students_ref.stream()
                 current_count = sum(1 for _ in students)
             except Exception as e:
+                _disable_firestore_if_needed(e)
                 print(f"[WARN] Could not get current attendance: {e}")
                 current_count = 0
         
-        # Get mess capacity
-        capacity = 100  # Default
-        if db:
-            try:
-                mess_doc = db.collection('messes').document(mess_id).get()
-                if mess_doc.exists:
-                    capacity = mess_doc.get('capacity', 100)
-            except Exception as e:
-                print(f"[WARN] Could not get mess capacity: {e}")
-        
-        training_info = train_mess_model(
-            mess_id=mess_id,
-            meal_type=meal_type,
-            days_back=days_back,
-            dev_mode=dev_mode,
-            force_train=force_train,
-        )
+        # Get mess capacity (require override to avoid Firestore auth delays)
+        capacity_override = parse_capacity(data.get('capacity'))
+        capacity = capacity_override if capacity_override is not None else 100
+
+        training_info = {'trained': False, 'records': 0, 'usedDummy': False, 'skippedRecent': False}
+        should_train = auto_train and meal_type and (force_train or not _has_recent_model(mess_id))
+        if should_train:
+            if async_train:
+                _start_background_training(
+                    mess_id=mess_id,
+                    meal_type=meal_type,
+                    days_back=days_back,
+                    dev_mode=dev_mode,
+                    force_train=force_train,
+                )
+                training_info['queued'] = True
+            else:
+                training_info = train_mess_model(
+                    mess_id=mess_id,
+                    meal_type=meal_type,
+                    days_back=days_back,
+                    dev_mode=dev_mode,
+                    force_train=force_train,
+                )
         
         # Use mess-specific TensorFlow model for predictions
         result = prediction_service.predict_next_slots(
@@ -319,8 +376,18 @@ def predict():
                 'message': f'Model not yet trained for {mess_id}. Run: python train_tensorflow.py {mess_id}'
             }), 200
         
+        predictions = result.get('predictions') or []
+        best_slot = None
+        if predictions:
+            best_slot = min(
+                predictions,
+                key=lambda p: p.get('crowd_percentage', p.get('predicted_crowd', 0)),
+            )
+
         result['meal_type'] = meal_type
         result['training'] = training_info
+        if best_slot:
+            result['best_slot'] = best_slot
         result['slot_minute'] = (current_time.minute // 15) * 15
         return jsonify(result), 200
         
@@ -343,6 +410,7 @@ def train_model():
         requested_slot = normalize_meal_type(data.get('slot') or data.get('mealType'))
         force_train = bool(data.get('forceTrain', True))
         dev_mode = bool(data.get('devMode', False))
+        async_train = bool(data.get('asyncTrain', True))
         try:
             days_back = max(1, int(data.get('daysBack', 30)))
         except Exception:
@@ -372,13 +440,24 @@ def train_model():
                 'training': {'trained': False, 'records': 0}
             }), 200
 
-        training_info = train_mess_model(
-            mess_id=mess_id,
-            meal_type=meal_type,
-            days_back=days_back,
-            dev_mode=dev_mode,
-            force_train=force_train,
-        )
+        training_info = {'trained': False, 'records': 0}
+        if async_train and (force_train or not _has_recent_model(mess_id)):
+            _start_background_training(
+                mess_id=mess_id,
+                meal_type=meal_type,
+                days_back=days_back,
+                dev_mode=dev_mode,
+                force_train=force_train,
+            )
+            training_info['queued'] = True
+        else:
+            training_info = train_mess_model(
+                mess_id=mess_id,
+                meal_type=meal_type,
+                days_back=days_back,
+                dev_mode=dev_mode,
+                force_train=force_train,
+            )
 
         model = prediction_service.get_prediction_model(mess_id)
         model_info = model.get_model_info() if model else {'trained': False}
