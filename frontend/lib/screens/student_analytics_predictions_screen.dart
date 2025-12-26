@@ -65,10 +65,16 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
         _analyticsData = Future.value(_emptyAnalyticsData());
         _predictions = Future.value(null);
       } else {
-        _analyticsData = _fetchAnalyticsData(_messId, _currentSlot!.type);
-        _predictions = _predictionService.getPrediction(_messId, slot: _currentSlot!.type);
+        final slotType = _currentSlot!.type;
+        _analyticsData = _fetchAnalyticsData(_messId, slotType);
+        _predictions = _loadPredictions(slotType);
       }
     });
+  }
+
+  Future<PredictionResult?> _loadPredictions(String slotType) async {
+    _predictionService.trainModel(_messId, slot: slotType);
+    return _predictionService.getPrediction(_messId, slot: slotType);
   }
 
   Map<String, dynamic> _emptyAnalyticsData() {

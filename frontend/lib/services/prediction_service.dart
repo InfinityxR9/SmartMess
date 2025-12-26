@@ -41,4 +41,30 @@ class PredictionService {
       return null;
     }
   }
+
+  Future<void> trainModel(
+    String messId, {
+    String? slot,
+    int daysBack = 30,
+  }) async {
+    try {
+      if (messId.isEmpty) {
+        return;
+      }
+      await http
+          .post(
+            Uri.parse('$baseUrl/train'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'messId': messId,
+              'slot': slot,
+              'daysBack': daysBack,
+              'forceTrain': true,
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
+    } catch (_) {
+      // Ignore training errors; predictions handle fallbacks.
+    }
+  }
 }

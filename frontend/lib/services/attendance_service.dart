@@ -191,7 +191,6 @@ class AttendanceService {
           .get();
 
       if (attendanceDoc.exists) {
-        print('[Attendance] Already marked for $mealType on $dateStr');
         return false;
       }
 
@@ -210,10 +209,8 @@ class AttendanceService {
         'markedBy': 'manual',
       });
 
-      print('[Attendance] Manual mark successful: $studentId for $mealType');
       return true;
     } catch (e) {
-      print('[Attendance] Error marking attendance manually: $e');
       return false;
     }
   }

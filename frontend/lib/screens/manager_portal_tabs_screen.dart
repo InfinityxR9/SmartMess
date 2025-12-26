@@ -360,12 +360,14 @@ class _ManagerPredictionTabState extends State<ManagerPredictionTab> {
       if (_currentSlot == null) {
         _predictions = Future.value(null);
       } else {
-        _predictions = _predictionService.getPrediction(
-          widget.messId,
-          slot: _currentSlot!.type,
-        );
+        _predictions = _loadPredictions(_currentSlot!.type);
       }
     });
+  }
+
+  Future<PredictionResult?> _loadPredictions(String slotType) async {
+    _predictionService.trainModel(widget.messId, slot: slotType);
+    return _predictionService.getPrediction(widget.messId, slot: slotType);
   }
 
   @override
@@ -541,15 +543,18 @@ class _ManagerAttendanceTabState extends State<ManagerAttendanceTab> {
         _attendanceData = Future.value(_emptyAttendanceData());
         _predictions = Future.value(null);
       } else {
-        _attendanceData = _fetchAttendanceData(widget.messId, _currentSlot!.type);
+        final slotType = _currentSlot!.type;
+        _attendanceData = _fetchAttendanceData(widget.messId, slotType);
         if (widget.showPredictions) {
-          _predictions = _predictionService.getPrediction(
-            widget.messId,
-            slot: _currentSlot!.type,
-          );
+          _predictions = _loadPredictions(slotType);
         }
       }
     });
+  }
+
+  Future<PredictionResult?> _loadPredictions(String slotType) async {
+    _predictionService.trainModel(widget.messId, slot: slotType);
+    return _predictionService.getPrediction(widget.messId, slot: slotType);
   }
 
   Map<String, dynamic> _emptyAttendanceData() {

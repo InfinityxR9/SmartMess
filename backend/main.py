@@ -158,6 +158,47 @@ def load_attendance_records(mess_id, meal_type, days_back=30):
 
     return records
 
+def train_mess_model(mess_id, meal_type, days_back=30, dev_mode=False, force_train=True):
+    training_info = {'trained': False, 'records': 0, 'usedDummy': False, 'skippedRecent': False}
+    if not force_train or not meal_type:
+        return training_info
+
+    try:
+        if _has_recent_model(mess_id, max_age_minutes=60):
+            training_info['skippedRecent'] = True
+            return training_info
+
+        attendance_records = []
+        if db:
+            attendance_records = load_attendance_records(
+                mess_id=mess_id,
+                meal_type=meal_type,
+                days_back=days_back
+            )
+            training_info['records'] = len(attendance_records)
+
+        if not attendance_records and dev_mode:
+            from train_tensorflow import generate_dummy_attendance_data
+            attendance_records = generate_dummy_attendance_data(mess_id, days=7)
+            training_info['records'] = len(attendance_records)
+            training_info['usedDummy'] = True
+
+        if attendance_records:
+            from train_tensorflow import MessCrowdRegressor
+            regressor = MessCrowdRegressor(mess_id)
+            training_info['trained'] = regressor.train(attendance_records)
+            if training_info['trained']:
+                prediction_service.models_cache.pop(mess_id, None)
+                print(f"[OK] Trained model for {mess_id} ({meal_type}) with {len(attendance_records)} records")
+            else:
+                print(f"[WARN] Training skipped for {mess_id} due to insufficient data")
+        else:
+            print(f"[WARN] No historical data for {mess_id} ({meal_type}); using existing model")
+    except Exception as e:
+        print(f"[WARN] Training failed for {mess_id}: {e}")
+
+    return training_info
+
 @app.route('/predict', methods=['POST', 'OPTIONS'])
 def predict():
     """
@@ -252,43 +293,13 @@ def predict():
             except Exception as e:
                 print(f"[WARN] Could not get mess capacity: {e}")
         
-        training_info = {'trained': False, 'records': 0, 'usedDummy': False, 'skippedRecent': False}
-        if force_train and meal_type:
-            try:
-                if _has_recent_model(mess_id, max_age_minutes=60):
-                    training_info['skippedRecent'] = True
-                    force_train = False
-                if not force_train:
-                    pass
-                else:
-                    attendance_records = []
-                    if db:
-                        attendance_records = load_attendance_records(
-                            mess_id=mess_id,
-                            meal_type=meal_type,
-                            days_back=days_back
-                        )
-                        training_info['records'] = len(attendance_records)
-
-                    if not attendance_records and dev_mode:
-                        from train_tensorflow import generate_dummy_attendance_data
-                        attendance_records = generate_dummy_attendance_data(mess_id, days=7)
-                        training_info['records'] = len(attendance_records)
-                        training_info['usedDummy'] = True
-
-                    if attendance_records:
-                        from train_tensorflow import MessCrowdRegressor
-                        regressor = MessCrowdRegressor(mess_id)
-                        training_info['trained'] = regressor.train(attendance_records)
-                        if training_info['trained']:
-                            prediction_service.models_cache.pop(mess_id, None)
-                            print(f"[OK] Trained model for {mess_id} ({meal_type}) with {len(attendance_records)} records")
-                        else:
-                            print(f"[WARN] Training skipped for {mess_id} due to insufficient data")
-                    else:
-                        print(f"[WARN] No historical data for {mess_id} ({meal_type}); using existing model")
-            except Exception as e:
-                print(f"[WARN] Training failed for {mess_id}: {e}")
+        training_info = train_mess_model(
+            mess_id=mess_id,
+            meal_type=meal_type,
+            days_back=days_back,
+            dev_mode=dev_mode,
+            force_train=force_train,
+        )
         
         # Use mess-specific TensorFlow model for predictions
         result = prediction_service.predict_next_slots(
@@ -324,40 +335,60 @@ def predict():
 def train_model():
     """
     Endpoint to train mess-specific TensorFlow models
-    For each mess, run: python train_tensorflow.py {mess_id}
-    
-    POST body: {'messId': 'mess_id'}
-    This endpoint is informational - actual training is done via ml_model/train_tensorflow.py
+    POST body: {'messId': 'mess_id', 'slot': 'breakfast|lunch|dinner', 'daysBack': 30}
     """
     try:
         data = request.get_json() or {}
         mess_id = data.get('messId')
+        requested_slot = normalize_meal_type(data.get('slot') or data.get('mealType'))
+        force_train = bool(data.get('forceTrain', True))
+        dev_mode = bool(data.get('devMode', False))
+        try:
+            days_back = max(1, int(data.get('daysBack', 30)))
+        except Exception:
+            days_back = 30
         
         if not mess_id:
             return jsonify({
-                'error': 'messId is required',
-                'instructions': 'To train a model, run: python train_tensorflow.py {mess_id}',
-                'example': 'python train_tensorflow.py alder',
-                'note': 'Model will be saved to: ml_model/models/{mess_id}_*.keras/pkl/json'
+                'error': 'messId is required'
             }), 400
-        
-        # Try to load existing model to verify it's trained
-        model = prediction_service.get_prediction_model(mess_id)
-        
-        if model:
-            model_info = model.get_model_info()
+
+        current_time = datetime.now()
+        meal_type = requested_slot or get_meal_type_exact(current_time.hour, current_time.minute)
+
+        if not meal_type and dev_mode:
+            hour = current_time.hour
+            if hour < 12:
+                meal_type = 'breakfast'
+            elif hour < 19:
+                meal_type = 'lunch'
+            else:
+                meal_type = 'dinner'
+
+        if not meal_type:
             return jsonify({
-                'message': f'Model already trained for {mess_id}',
                 'messId': mess_id,
-                'modelInfo': model_info
+                'warning': 'Outside meal hours. Provide slot to train.',
+                'training': {'trained': False, 'records': 0}
             }), 200
-        else:
-            return jsonify({
-                'message': f'No trained model for {mess_id}',
-                'messId': mess_id,
-                'instructions': f'Run: python train_tensorflow.py {mess_id}',
-                'location': 'ml_model/train_tensorflow.py'
-            }), 404
+
+        training_info = train_mess_model(
+            mess_id=mess_id,
+            meal_type=meal_type,
+            days_back=days_back,
+            dev_mode=dev_mode,
+            force_train=force_train,
+        )
+
+        model = prediction_service.get_prediction_model(mess_id)
+        model_info = model.get_model_info() if model else {'trained': False}
+
+        return jsonify({
+            'messId': mess_id,
+            'mealType': meal_type,
+            'training': training_info,
+            'modelInfo': model_info
+        }), 200
             
     except Exception as e:
         print(f"Error in train: {e}")

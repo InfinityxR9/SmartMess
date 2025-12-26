@@ -339,19 +339,19 @@ class _PredictionScreenState extends State<PredictionScreen> {
                     ),
                     SizedBox(height: 12),
                     _buildTipItem(
-                      '• Visit during green/low crowd slots for shorter queues',
+                      '- Visit during green/low crowd slots for shorter queues',
                     ),
                     SizedBox(height: 8),
                     _buildTipItem(
-                      '• Peak hours usually coincide with typical break times',
+                      '- Peak hours usually coincide with typical break times',
                     ),
                     SizedBox(height: 8),
                     _buildTipItem(
-                      '• Predictions improve with more historical data',
+                      '- Predictions improve with more historical data',
                     ),
                     SizedBox(height: 8),
                     _buildTipItem(
-                      '• Check updated predictions throughout the day',
+                      '- Check updated predictions throughout the day',
                     ),
                   ],
                 ),

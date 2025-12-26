@@ -57,8 +57,8 @@ class _ManualAttendanceScreenState extends State<ManualAttendanceScreen> {
       if (mounted) {
         setState(() {
           _message = success
-              ? '✓ ${_nameController.text} marked present'
-              : '✗ ${_nameController.text} already marked for this meal';
+              ? 'Success: ${_nameController.text} marked present'
+              : 'Already marked for this meal: ${_nameController.text}';
           _isSuccess = success;
           _isLoading = false;
         });
@@ -109,7 +109,7 @@ class _ManualAttendanceScreenState extends State<ManualAttendanceScreen> {
 
       if (mounted) {
         setState(() {
-          _message = '✓ $markedCount/${_studentCount} students marked successfully';
+          _message = 'Success: $markedCount/${_studentCount} students marked successfully';
           _isSuccess = true;
           _isLoading = false;
         });

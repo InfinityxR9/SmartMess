@@ -406,11 +406,11 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     ),
                     SizedBox(height: 12),
                     Text(
-                      '• Monitor meal-wise attendance patterns\n'
-                      '• Identify peak hours for better resource planning\n'
-                      '• Use this data to improve meal planning\n'
-                      '• Track which meals are more popular\n'
-                      '• Prepare for expected crowds',
+                      '- Monitor meal-wise attendance patterns\n'
+                      '- Identify peak hours for better resource planning\n'
+                      '- Use this data to improve meal planning\n'
+                      '- Track which meals are more popular\n'
+                      '- Prepare for expected crowds',
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.blue.shade900,

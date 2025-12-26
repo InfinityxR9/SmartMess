@@ -28,6 +28,57 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  void _showManagerInfoSheet(BuildContext context, UnifiedAuthProvider authProvider) {
+    final managerName = authProvider.messManagerName ?? 'Not Assigned';
+    final managerEmail = authProvider.messManagerEmail ?? 'Not Available';
+    showModalBottomSheet(
+      context: context,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Mess Manager',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const Icon(Icons.person, color: Color(0xFF6200EE)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        managerName,
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.email, color: Color(0xFF6200EE)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        managerEmail,
+                        style: const TextStyle(fontSize: 13, color: Colors.black87),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<UnifiedAuthProvider>(
@@ -355,6 +406,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                 ),
                               );
+                            },
+                          ),
+                          _buildActionCard(
+                            icon: Icons.admin_panel_settings,
+                            title: 'Manager Info',
+                            color: Color(0xFF795548),
+                            onTap: () {
+                              _showManagerInfoSheet(context, authProvider);
                             },
                           ),
                         ],
