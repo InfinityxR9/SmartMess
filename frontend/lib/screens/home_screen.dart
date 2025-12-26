@@ -6,10 +6,10 @@ import 'package:smart_mess/screens/qr_generator_screen.dart';
 import 'package:smart_mess/screens/manual_attendance_screen.dart';
 import 'package:smart_mess/screens/menu_creation_screen.dart';
 import 'package:smart_mess/screens/menu_screen.dart';
-import 'package:smart_mess/screens/analytics_screen.dart';
 import 'package:smart_mess/screens/analytics_enhanced_screen.dart';
 import 'package:smart_mess/screens/student_analytics_predictions_screen.dart';
 import 'package:smart_mess/screens/rating_screen.dart';
+import 'package:smart_mess/utils/meal_time.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -208,6 +208,44 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                               ],
                             ),
+                            if (authProvider.isStudent) ...[
+                              SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Icon(Icons.admin_panel_settings, color: Color(0xFF6200EE)),
+                                  SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Mess Manager',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                        Text(
+                                          authProvider.messManagerName ?? 'Not Assigned',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        if ((authProvider.messManagerEmail ?? '').isNotEmpty)
+                                          Text(
+                                            authProvider.messManagerEmail ?? '',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey[500],
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -306,15 +344,24 @@ class _HomeScreenState extends State<HomeScreen> {
                             title: 'Generate QR',
                             color: Color(0xFF6200EE),
                             onTap: () {
-                              _showMealSelector(context, (mealType) {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (context) => QRGeneratorScreen(
-                                      mealType: mealType,
+                              final slot = getCurrentMealSlot();
+                              if (slot == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Outside meal hours. QR can only be generated during meal times.',
                                     ),
                                   ),
                                 );
-                              });
+                                return;
+                              }
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => QRGeneratorScreen(
+                                    mealType: slot.type,
+                                  ),
+                                ),
+                              );
                             },
                           ),
                           _buildActionCard(
@@ -322,14 +369,23 @@ class _HomeScreenState extends State<HomeScreen> {
                             title: 'Mark Attendance',
                             color: Color(0xFFFF6B6B),
                             onTap: () {
-                              _showMealSelector(context, (mealType) {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        ManualAttendanceScreen(mealType: mealType),
+                              final slot = getCurrentMealSlot();
+                              if (slot == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Outside meal hours. Attendance can only be marked during meal times.',
+                                    ),
                                   ),
                                 );
-                              });
+                                return;
+                              }
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      ManualAttendanceScreen(mealType: slot.type),
+                                ),
+                              );
                             },
                           ),
                           _buildActionCard(

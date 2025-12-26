@@ -234,15 +234,23 @@ def predict():
             except Exception as e:
                 print(f"[WARN] Could not get mess capacity: {e}")
         
-        training_info = {'trained': False, 'records': 0}
-        if force_train and db and meal_type:
+        training_info = {'trained': False, 'records': 0, 'usedDummy': False}
+        if force_train and meal_type:
             try:
-                attendance_records = load_attendance_records(
-                    mess_id=mess_id,
-                    meal_type=meal_type,
-                    days_back=days_back
-                )
-                training_info['records'] = len(attendance_records)
+                attendance_records = []
+                if db:
+                    attendance_records = load_attendance_records(
+                        mess_id=mess_id,
+                        meal_type=meal_type,
+                        days_back=days_back
+                    )
+                    training_info['records'] = len(attendance_records)
+
+                if not attendance_records and dev_mode:
+                    from train_tensorflow import generate_dummy_attendance_data
+                    attendance_records = generate_dummy_attendance_data(mess_id, days=7)
+                    training_info['records'] = len(attendance_records)
+                    training_info['usedDummy'] = True
 
                 if attendance_records:
                     from train_tensorflow import MessCrowdRegressor

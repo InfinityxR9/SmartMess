@@ -190,6 +190,8 @@ class UnifiedAuthProvider extends ChangeNotifier {
       _messId = null;
       _messName = null;
       _messCode = null;
+      _messManagerName = null;
+      _messManagerEmail = null;
       _assignedMesses = [];
       _error = null;
 

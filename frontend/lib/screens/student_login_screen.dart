@@ -36,7 +36,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
     );
     if (picked != null) {
       _dobController.text =
-          '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+          '${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}';
     }
   }
 
@@ -145,7 +145,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                           enabled: false,
                           decoration: InputDecoration(
                             labelText: 'Date of Birth',
-                            hintText: 'YYYY-MM-DD',
+                            hintText: 'DD/MM/YYYY',
                             prefixIcon: Icon(Icons.calendar_today),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
