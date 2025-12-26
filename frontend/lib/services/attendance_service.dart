@@ -7,16 +7,22 @@ class AttendanceService {
 
   /// Mark attendance for a student via QR code
   /// Returns true if marked successfully, false if already marked or error
-  Future<bool> markAttendanceViaQR(
-    String messId,
-    String studentId,
-    String mealType,
-    String enrollmentId,
-    String studentName,
-  ) async {
+  Future<bool> markAttendanceViaQR({
+    required String messId,
+    required String studentId,
+    required String mealType,
+    required String enrollmentId,
+    required String studentName,
+    String? qrCodeId,
+    String? qrGeneratedAt,
+    String? qrExpiresAt,
+  }) async {
     try {
       final today = DateTime.now();
       final dateStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+      final normalizedStudentId = studentId.trim().isNotEmpty ? studentId : uuid.v4();
+      final normalizedEnrollmentId = _normalizeEnrollmentId(enrollmentId);
+      final normalizedStudentName = _normalizeStudentName(studentName);
 
       // Check if already marked
       final attendanceDoc = await _firestore
@@ -25,7 +31,7 @@ class AttendanceService {
           .collection(dateStr)
           .doc(mealType)
           .collection('students')
-          .doc(studentId)
+          .doc(normalizedStudentId)
           .get();
 
       if (attendanceDoc.exists) {
@@ -39,12 +45,15 @@ class AttendanceService {
           .collection(dateStr)
           .doc(mealType)
           .collection('students')
-          .doc(studentId)
+          .doc(normalizedStudentId)
           .set({
-        'enrollmentId': enrollmentId,
-        'studentName': studentName,
+        'enrollmentId': normalizedEnrollmentId,
+        'studentName': normalizedStudentName,
         'markedAt': DateTime.now().toIso8601String(),
-        'markedBy': 'qr',
+        'markedBy': 'scanned',
+        'qrCodeId': qrCodeId,
+        'qrGeneratedAt': qrGeneratedAt,
+        'qrExpiresAt': qrExpiresAt,
       });
 
       return true;
@@ -167,6 +176,9 @@ class AttendanceService {
     try {
       final today = DateTime.now();
       final dateStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+      final normalizedStudentId = studentId.trim().isNotEmpty ? studentId : uuid.v4();
+      final normalizedEnrollmentId = _normalizeEnrollmentId(enrollmentId);
+      final normalizedStudentName = _normalizeStudentName(studentName);
 
       // Check if already marked
       final attendanceDoc = await _firestore
@@ -175,7 +187,7 @@ class AttendanceService {
           .collection(dateStr)
           .doc(mealType)
           .collection('students')
-          .doc(studentId)
+          .doc(normalizedStudentId)
           .get();
 
       if (attendanceDoc.exists) {
@@ -190,10 +202,10 @@ class AttendanceService {
           .collection(dateStr)
           .doc(mealType)
           .collection('students')
-          .doc(studentId)
+          .doc(normalizedStudentId)
           .set({
-        'enrollmentId': enrollmentId,
-        'studentName': studentName,
+        'enrollmentId': normalizedEnrollmentId,
+        'studentName': normalizedStudentName,
         'markedAt': DateTime.now().toIso8601String(),
         'markedBy': 'manual',
       });
@@ -261,5 +273,15 @@ class AttendanceService {
       print('[Attendance] Error getting count: $e');
       return {};
     }
+  }
+
+  String _normalizeEnrollmentId(String? enrollmentId) {
+    final trimmed = enrollmentId?.trim() ?? '';
+    return trimmed.isNotEmpty ? trimmed : 'ANON-${uuid.v4()}';
+  }
+
+  String _normalizeStudentName(String? studentName) {
+    final trimmed = studentName?.trim() ?? '';
+    return trimmed.isNotEmpty ? trimmed : 'Anonymous';
   }
 }

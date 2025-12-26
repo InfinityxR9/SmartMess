@@ -62,6 +62,10 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
 
         final messId = decodedData['messId'] as String?;
         final mealType = decodedData['mealType'] as String?;
+        final qrCodeId = decodedData['qrCodeId'] as String?;
+        final qrDate = decodedData['date'] as String?;
+        final generatedAt = decodedData['generatedAt'] as String?;
+        final expiresAt = decodedData['expiresAt'] as String?;
 
         if (messId == null || mealType == null) {
           setState(() {
@@ -70,6 +74,32 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
             _isProcessing = false;
           });
           return;
+        }
+
+        if (expiresAt != null) {
+          final expiry = DateTime.tryParse(expiresAt);
+          if (expiry != null && DateTime.now().isAfter(expiry)) {
+            setState(() {
+              _message = 'This QR code has expired. Please scan a new one.';
+              _isSuccess = false;
+              _isProcessing = false;
+            });
+            return;
+          }
+        }
+
+        if (qrDate != null) {
+          final now = DateTime.now();
+          final todayStr =
+              '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+          if (qrDate != todayStr) {
+            setState(() {
+              _message = 'This QR code is for a different date.';
+              _isSuccess = false;
+              _isProcessing = false;
+            });
+            return;
+          }
         }
 
         final authProvider = context.read<UnifiedAuthProvider>();
@@ -108,21 +138,24 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
         }
 
         final success = await _attendanceService.markAttendanceViaQR(
-          messId,
-          authProvider.userId ?? '',
-          mealType,
-          authProvider.enrollmentId ?? '',
-          authProvider.userName ?? '',
+          messId: messId,
+          studentId: authProvider.userId ?? '',
+          mealType: mealType,
+          enrollmentId: authProvider.enrollmentId ?? '',
+          studentName: authProvider.userName ?? '',
+          qrCodeId: qrCodeId,
+          qrGeneratedAt: generatedAt,
+          qrExpiresAt: expiresAt,
         );
 
         if (mounted) {
           setState(() {
             if (success) {
-              _message = '✓ Attendance marked!\n${authProvider.userName}';
+              _message = 'Attendance marked!\n${authProvider.userName}';
               _enrollmentId = authProvider.enrollmentId;
               _isSuccess = true;
 
-              Future.delayed(Duration(seconds: 2), () {
+              Future.delayed(const Duration(seconds: 2), () {
                 if (mounted) {
                   Navigator.pop(context, true);
                 }
@@ -178,9 +211,9 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        kIsWeb 
-                          ? 'Browser camera access needed. Enable HTTPS and camera permissions.'
-                          : 'Please enable camera permissions in settings',
+                        kIsWeb
+                            ? 'Browser camera access needed. Enable HTTPS and camera permissions.'
+                            : 'Please enable camera permissions in settings',
                         textAlign: TextAlign.center,
                         style: const TextStyle(color: Colors.grey, fontSize: 14),
                       ),
@@ -305,4 +338,3 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
     );
   }
 }
-

@@ -24,12 +24,13 @@ class MessCrowdRegressor:
         self.mess_id = mess_id
         self.model = None
         self.scaler = None
-        self.model_path = f'models/{mess_id}_model.keras'  # Use .keras format instead of .h5
-        self.scaler_path = f'models/{mess_id}_scaler.pkl'
-        self.metadata_path = f'models/{mess_id}_metadata.json'
+        models_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models')
+        self.model_path = os.path.join(models_dir, f'{mess_id}_model.keras')
+        self.scaler_path = os.path.join(models_dir, f'{mess_id}_scaler.pkl')
+        self.metadata_path = os.path.join(models_dir, f'{mess_id}_metadata.json')
         
         # Create models directory if it doesn't exist
-        os.makedirs('models', exist_ok=True)
+        os.makedirs(models_dir, exist_ok=True)
         
     def create_model(self, input_dim):
         """Create a simple regression neural network"""

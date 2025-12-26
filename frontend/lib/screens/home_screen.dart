@@ -10,7 +10,6 @@ import 'package:smart_mess/screens/analytics_screen.dart';
 import 'package:smart_mess/screens/analytics_enhanced_screen.dart';
 import 'package:smart_mess/screens/student_analytics_predictions_screen.dart';
 import 'package:smart_mess/screens/rating_screen.dart';
-import 'package:smart_mess/screens/prediction_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -273,20 +272,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             },
                           ),
                           _buildActionCard(
-                            icon: Icons.trending_up,
-                            title: 'Predictions',
-                            color: Color(0xFFFFC107),
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) => PredictionScreen(),
-                                ),
-                              );
-                            },
-                          ),
-                          _buildActionCard(
                             icon: Icons.bar_chart,
-                            title: 'Analytics',
+                            title: 'Analytics & Predictions',
                             color: Color(0xFF9C27B0),
                             onTap: () {
                               Navigator.of(context).push(

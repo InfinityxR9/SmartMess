@@ -1,10 +1,10 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_mess/providers/unified_auth_provider.dart';
 import 'package:smart_mess/services/prediction_service.dart';
+import 'package:smart_mess/services/review_service.dart';
 import 'package:smart_mess/models/prediction_model.dart';
-import 'package:fl_chart/fl_chart.dart';
 
 class StudentAnalyticsPredictionsScreen extends StatefulWidget {
   const StudentAnalyticsPredictionsScreen({Key? key}) : super(key: key);
@@ -16,8 +16,9 @@ class StudentAnalyticsPredictionsScreen extends StatefulWidget {
 class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPredictionsScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final PredictionService _predictionService = PredictionService();
+  final ReviewService _reviewService = ReviewService();
   late Future<Map<String, dynamic>> _analyticsData;
-  late Future<Map<String, dynamic>> _predictionData;
+  late Future<PredictionResult?> _predictions;
   String _selectedMeal = 'breakfast';
 
   @override
@@ -25,20 +26,31 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
     super.initState();
     final authProvider = context.read<UnifiedAuthProvider>();
     final messId = authProvider.messId ?? '';
-    
+    _loadData(messId);
+  }
+
+  void _loadData(String messId) {
     _analyticsData = _fetchAnalyticsData(messId, _selectedMeal);
-    _predictionData = _predictionService.getPrediction(messId).then((result) {
-      return {
-        'predictions': result?.predictions ?? [],
-        'bestSlot': result?.bestSlot,
-      };
-    }).onError((error, stack) {
-      return {
-        'predictions': [],
-        'bestSlot': null,
-        'error': error.toString(),
-      };
-    });
+    _predictions = _predictionService.getPrediction(messId, slot: _selectedMeal);
+  }
+
+  String _formatMarkedTime(dynamic markedAt) {
+    if (markedAt == null) return '';
+    if (markedAt is Timestamp) {
+      final dt = markedAt.toDate();
+      return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    }
+    final text = markedAt.toString();
+    if (text.contains('T')) {
+      final parts = text.split('T');
+      if (parts.length > 1 && parts[1].length >= 5) {
+        return parts[1].substring(0, 5);
+      }
+    }
+    if (text.length >= 16 && text[10] == ' ') {
+      return text.substring(11, 16);
+    }
+    return text;
   }
 
   Future<Map<String, dynamic>> _fetchAnalyticsData(String messId, String meal) async {
@@ -46,11 +58,9 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
     final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
     try {
-      // Get mess info for capacity
       final messSnapshot = await _firestore.collection('messes').doc(messId).get();
       final capacity = (messSnapshot.data()?['capacity'] ?? 0) as int;
 
-      // Fetch attendance for this meal and date
       final attendanceSnapshot = await _firestore
           .collection('attendance')
           .doc(messId)
@@ -60,51 +70,54 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
           .get();
 
       final totalAttendance = attendanceSnapshot.docs.length;
+      final students = attendanceSnapshot.docs
+          .map((doc) {
+            final data = doc.data();
+            return {
+              'studentId': doc.id,
+              'enrollmentId': data['enrollmentId'] ?? 'Anonymous',
+              'studentName': data['studentName'] ?? 'Anonymous',
+              'markedAt': data['markedAt'] ?? '',
+              'markedBy': data['markedBy'] ?? 'unknown',
+            };
+          })
+          .toList();
+
       final crowdPercentage =
           capacity > 0 ? ((totalAttendance / capacity) * 100).toStringAsFixed(1) : '0';
 
-      // Fetch reviews for this meal and date
-      final reviewsSnapshot = await _firestore
-          .collection('reviews')
-          .doc(messId)
-          .collection(dateStr)
-          .doc(meal)
-          .collection('items')
-          .get();
+      final reviews = await _reviewService.getReviewsForDateAndSlot(
+        messId: messId,
+        date: dateStr,
+        slot: meal,
+      );
 
-      List<Map<String, dynamic>> reviews = [];
       double avgRating = 0;
-
-      if (reviewsSnapshot.docs.isNotEmpty) {
-        reviews = reviewsSnapshot.docs
-            .map((doc) {
-              final data = doc.data();
-              return {
-                'rating': data['rating'] ?? 0,
-                'comment': data['comment'] ?? '',
-                'studentName': data['studentName'] ?? 'Anonymous',
-              };
-            })
-            .toList();
-
-        avgRating = reviews.fold<double>(0, (sum, r) => sum + ((r['rating'] as int?) ?? 0)) /
-            reviews.length;
+      if (reviews.isNotEmpty) {
+        final totalRating = reviews.fold<int>(
+          0,
+          (sum, r) => sum + ((r['rating'] as int?) ?? 0),
+        );
+        avgRating = totalRating / reviews.length;
       }
 
       return {
+        'date': dateStr,
         'capacity': capacity,
         'totalAttendance': totalAttendance,
         'crowdPercentage': crowdPercentage,
+        'students': students,
         'reviews': reviews,
         'avgRating': avgRating.toStringAsFixed(1),
         'reviewCount': reviews.length,
       };
     } catch (e) {
-      print('Error fetching analytics: $e');
       return {
+        'date': dateStr,
         'capacity': 0,
         'totalAttendance': 0,
         'crowdPercentage': '0',
+        'students': [],
         'reviews': [],
         'avgRating': '0',
         'reviewCount': 0,
@@ -128,7 +141,6 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Meal Selector
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(12),
@@ -149,7 +161,7 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
                         if (value != null) {
                           setState(() {
                             _selectedMeal = value;
-                            _analyticsData = _fetchAnalyticsData(messId, _selectedMeal);
+                            _loadData(messId);
                           });
                         }
                       },
@@ -159,8 +171,6 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
               ),
             ),
             const SizedBox(height: 20),
-            
-            // Analytics Section
             const Text(
               'Today\'s Analytics',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -174,7 +184,7 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
                 }
 
                 if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
+                  return const Center(child: Text('Unable to load analytics'));
                 }
 
                 final data = snapshot.data ?? {};
@@ -182,7 +192,11 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Stats Row
+                    Text(
+                      'Date: ${data['date'] ?? ''}',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 12),
                     Row(
                       children: [
                         Expanded(
@@ -216,15 +230,46 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
                         Expanded(
                           child: _StatCard(
                             title: 'Avg Rating',
-                            value: '${data['avgRating'] ?? '0'} â˜…',
+                            value: '${data['avgRating'] ?? '0'}',
                             icon: Icons.rate_review,
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 24),
-                    
-                    // Reviews Section
+                    if ((data['students'] as List?)?.isNotEmpty ?? false) ...[
+                      const Text(
+                        'Student Attendance',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 12),
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: (data['students'] as List?)?.length ?? 0,
+                        itemBuilder: (context, index) {
+                          final student = (data['students'] as List?)?[index] ?? {};
+                          final markedBy = (student['markedBy'] ?? 'unknown').toString();
+                          final markedByLabel = markedBy == 'qr' ? 'scanned' : markedBy;
+                          return Card(
+                            child: ListTile(
+                              leading: const Icon(Icons.check_circle_outline, color: Colors.green),
+                              title: Text(student['studentName']?.toString() ?? 'Anonymous'),
+                              subtitle: Text(
+                                'ID: ${student['enrollmentId']?.toString() ?? 'Anonymous'} | $markedByLabel',
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                              trailing: Text(
+                                _formatMarkedTime(student['markedAt']),
+                                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 24),
+                    ] else
+                      const Text('No attendance marked yet for this slot'),
                     if ((data['reviews'] as List?)?.isNotEmpty ?? false) ...[
                       const Text(
                         'Recent Reviews',
@@ -271,6 +316,11 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
                                     reviewData['comment'] ?? '',
                                     style: TextStyle(color: Colors.grey[700]),
                                   ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _formatMarkedTime(reviewData['submittedAt']),
+                                    style: const TextStyle(fontSize: 10, color: Colors.grey),
+                                  ),
                                 ],
                               ),
                             ),
@@ -284,35 +334,20 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
               },
             ),
             const SizedBox(height: 32),
-            
-            // Predictions Section
             const Text(
               'Upcoming 15-Min Slot Predictions',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
-            FutureBuilder<Map<String, dynamic>>(
-              future: _predictionData,
+            FutureBuilder<PredictionResult?>(
+              future: _predictions,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                if (!snapshot.hasData) {
-                  return Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Text('Unable to load predictions. Try again later.'),
-                  );
-                }
-
-                final data = snapshot.data!;
-                final predictions = (data['predictions'] as List?)?.cast<TimeSlotPrediction>() ?? [];
-
-                if (predictions.isEmpty) {
+                final prediction = snapshot.data;
+                if (prediction == null || prediction.predictions.isEmpty) {
                   return Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -324,10 +359,10 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
                 }
 
                 return Column(
-                  children: predictions.map((pred) {
+                  children: prediction.predictions.map((pred) {
                     final isBad = pred.crowdPercentage > 70;
                     final isModerate = pred.crowdPercentage > 40;
-                    
+
                     return Container(
                       margin: const EdgeInsets.only(bottom: 12),
                       padding: const EdgeInsets.all(12),
@@ -358,3 +393,68 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
                                 ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${pred.predictedCrowd.toStringAsFixed(0)} students expected',
+                                style: TextStyle(color: Colors.grey[700], fontSize: 12),
+                              ),
+                            ],
+                          ),
+                          Text(
+                            '${pred.crowdPercentage.toStringAsFixed(0)}%',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: isBad
+                                  ? Colors.red
+                                  : isModerate
+                                      ? Colors.orange
+                                      : Colors.green,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final IconData icon;
+
+  const _StatCard({
+    required this.title,
+    required this.value,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            Icon(icon, color: Colors.purple, size: 24),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            Text(title, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          ],
+        ),
+      ),
+    );
+  }
+}

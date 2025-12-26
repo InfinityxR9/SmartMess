@@ -65,7 +65,7 @@ class PredictionService:
             'messId': mess_id,
             'timestamp': datetime.now().isoformat(),
             'date': current_time.strftime('%Y-%m-%d'),
-            'mealType': model.get_meal_type(current_time.hour)[0] or 'none',
+            'mealType': model.get_meal_type(current_time.hour, current_time.minute)[0] or 'none',
             'current_crowd': current_count,
             'capacity': capacity,
             'current_percentage': round((current_count / capacity) * 100, 1),

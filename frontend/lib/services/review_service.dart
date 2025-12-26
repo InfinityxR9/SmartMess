@@ -29,11 +29,12 @@ class ReviewService {
   }) async {
     try {
       final currentMealType = _getMealType();
+      final normalizedMealType = mealType.trim().toLowerCase();
       if (currentMealType.isEmpty) {
         throw 'Outside meal hours - reviews only during meal time';
       }
       
-      if (mealType != currentMealType) {
+      if (normalizedMealType != currentMealType) {
         throw 'Can only submit $currentMealType reviews during $currentMealType hours';
       }
 
@@ -44,7 +45,7 @@ class ReviewService {
           .collection('reviews')
           .doc(messId)
           .collection(dateStr)
-          .doc(mealType)
+          .doc(normalizedMealType)
           .collection('items')
           .add({
         'rating': rating,
@@ -52,12 +53,12 @@ class ReviewService {
         'studentId': studentId,
         'studentName': studentName ?? 'Anonymous',
         'submittedAt': now.toIso8601String(),
-        'slot': mealType,
+        'slot': normalizedMealType,
         'date': dateStr,
         'messId': messId
       });
       
-      print('[Review] Submitted successfully for $messId $dateStr $mealType');
+      print('[Review] Submitted successfully for $messId $dateStr $normalizedMealType');
       return true;
     } catch (e) {
       print('[Review] Error submitting review: $e');
@@ -70,11 +71,7 @@ class ReviewService {
     required String mealType,
   }) async {
     try {
-      final currentMealType = _getMealType();
-      if (currentMealType.isEmpty || currentMealType != mealType) {
-        return [];
-      }
-
+      final normalizedMealType = mealType.trim().toLowerCase();
       final now = DateTime.now();
       final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
@@ -82,7 +79,7 @@ class ReviewService {
           .collection('reviews')
           .doc(messId)
           .collection(dateStr)
-          .doc(mealType)
+          .doc(normalizedMealType)
           .collection('items')
           .get();
 
@@ -118,11 +115,12 @@ class ReviewService {
     required String slot,
   }) async {
     try {
+      final normalizedSlot = slot.trim().toLowerCase();
       final snapshot = await _firestore
           .collection('reviews')
           .doc(messId)
           .collection(date)
-          .doc(slot)
+          .doc(normalizedSlot)
           .collection('items')
           .get();
 

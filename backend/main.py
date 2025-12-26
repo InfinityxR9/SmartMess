@@ -33,11 +33,13 @@ def add_cors_headers(response):
 
 # Initialize Firebase
 try:
-    # Try to load from environment variable or credentials file
-    if os.path.exists('serviceAccountKey.json'):
+    # Prefer bundled service account; fall back to ADC if needed
+    service_account_path = os.path.join(os.path.dirname(__file__), 'serviceAccountKey.json')
+    if os.path.exists(service_account_path):
+        cred = credentials.Certificate(service_account_path)
+    elif os.path.exists('serviceAccountKey.json'):
         cred = credentials.Certificate('serviceAccountKey.json')
     else:
-        # Use Application Default Credentials
         cred = credentials.ApplicationDefault()
     
     firebase_admin.initialize_app(cred)
@@ -65,13 +67,86 @@ def get_meal_type_exact(hour, minute):
         return 'dinner'
     return None
 
+MEAL_WINDOWS = {
+    'breakfast': (7, 30, 9, 30),
+    'lunch': (12, 0, 14, 0),
+    'dinner': (19, 30, 21, 30),
+}
+
+def normalize_meal_type(meal_type):
+    if not meal_type:
+        return None
+    normalized = str(meal_type).strip().lower()
+    return normalized if normalized in MEAL_WINDOWS else None
+
+def get_slot_window(current_time, meal_type):
+    window = MEAL_WINDOWS.get(meal_type)
+    if not window:
+        return None, None
+    start_h, start_m, end_h, end_m = window
+    slot_start = current_time.replace(hour=start_h, minute=start_m, second=0, microsecond=0)
+    slot_end = current_time.replace(hour=end_h, minute=end_m, second=0, microsecond=0)
+    return slot_start, slot_end
+
+def load_attendance_records(mess_id, meal_type, days_back=30):
+    """Load attendance records for a mess and specific meal slot over past days."""
+    if not db:
+        return []
+    records = []
+    now = datetime.now()
+
+    for day_offset in range(days_back):
+        date_str = (now - timedelta(days=day_offset)).strftime('%Y-%m-%d')
+        try:
+            date_collection = db.collection('attendance').document(mess_id).collection(date_str)
+            if meal_type:
+                meal_doc = date_collection.document(meal_type)
+                students_ref = meal_doc.collection('students')
+                students = students_ref.stream()
+                for student_doc in students:
+                    data = student_doc.to_dict() or {}
+                    marked_at = data.get('markedAt')
+                    if hasattr(marked_at, 'isoformat'):
+                        marked_at = marked_at.isoformat()
+                    records.append({
+                        'enrollmentId': data.get('enrollmentId') or student_doc.id,
+                        'studentName': data.get('studentName', 'Anonymous'),
+                        'markedAt': marked_at,
+                        'markedBy': data.get('markedBy', 'unknown'),
+                        'messId': mess_id,
+                        'meal': meal_type,
+                        'date': date_str
+                    })
+            else:
+                for meal_doc in date_collection.stream():
+                    students_ref = meal_doc.reference.collection('students')
+                    students = students_ref.stream()
+                    for student_doc in students:
+                        data = student_doc.to_dict() or {}
+                        marked_at = data.get('markedAt')
+                        if hasattr(marked_at, 'isoformat'):
+                            marked_at = marked_at.isoformat()
+                        records.append({
+                            'enrollmentId': data.get('enrollmentId') or student_doc.id,
+                            'studentName': data.get('studentName', 'Anonymous'),
+                            'markedAt': marked_at,
+                            'markedBy': data.get('markedBy', 'unknown'),
+                            'messId': mess_id,
+                            'meal': meal_doc.id,
+                            'date': date_str
+                        })
+        except Exception:
+            continue
+
+    return records
+
 @app.route('/predict', methods=['POST', 'OPTIONS'])
 def predict():
     """
-    Real-time crowd prediction with 15-minute slot-based training
-    Trains model on the spot using data from the current 15-min slot only
+    Real-time crowd prediction with slot-aware training
+    Trains model on recent historical data for the selected slot
     Uses mess-specific TensorFlow models for isolation
-    Expected input: {'messId': 'mess_id', 'devMode': True/False}
+    Expected input: {'messId': 'mess_id', 'devMode': True/False, 'slot': 'breakfast|lunch|dinner'}
     Returns: Predictions for current and next 15-minute slots
     
     Data Structure: attendance/<messId>/<date>/<meal>/students
@@ -81,24 +156,31 @@ def predict():
         return '', 200
     
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
         mess_id = data.get('messId')
         dev_mode = data.get('devMode', False)  # Allow predictions outside meal times in dev mode
+        requested_slot = normalize_meal_type(data.get('slot') or data.get('mealType'))
+        force_train = bool(data.get('forceTrain', True))
+        try:
+            days_back = max(1, int(data.get('daysBack', 30)))
+        except Exception:
+            days_back = 30
         
         if not mess_id:
             return jsonify({'error': 'messId is required'}), 400
+        if (data.get('slot') or data.get('mealType')) and not requested_slot:
+            return jsonify({'error': 'Invalid slot. Use breakfast, lunch, or dinner.'}), 400
         
         # Get current time and calculate 15-minute slot
         current_time = datetime.now()
-        date_str = current_time.strftime('%Y-%m-%d')
         hour = current_time.hour
         minute = current_time.minute
         
         # Get exact meal type using precise windows
-        meal_type = get_meal_type_exact(hour, minute)
+        meal_type = requested_slot or get_meal_type_exact(hour, minute)
         
         # Check if outside meal hours
-        if not meal_type and not dev_mode:
+        if not meal_type and not dev_mode and not requested_slot:
             return jsonify({
                 'warning': 'Outside meal hours',
                 'messId': mess_id,
@@ -114,13 +196,28 @@ def predict():
                 meal_type = 'lunch'
             else:
                 meal_type = 'dinner'
+
+        # If a slot was requested, ensure we predict within that window
+        if requested_slot:
+            meal_type = requested_slot
+            slot_start, slot_end = get_slot_window(current_time, meal_type)
+            if slot_start and slot_end and not (slot_start <= current_time <= slot_end):
+                current_time = slot_start
+
+        date_str = current_time.strftime('%Y-%m-%d')
         
         # Get current attendance count for the 15-minute slot
         current_count = 0
         
         if db:
             try:
-                students_ref = db.collection(f'attendance/{mess_id}/{date_str}/{meal_type}/students')
+                students_ref = (
+                    db.collection('attendance')
+                    .document(mess_id)
+                    .collection(date_str)
+                    .document(meal_type)
+                    .collection('students')
+                )
                 students = students_ref.stream()
                 current_count = sum(1 for _ in students)
             except Exception as e:
@@ -137,56 +234,29 @@ def predict():
             except Exception as e:
                 print(f"[WARN] Could not get mess capacity: {e}")
         
-        # Train model on the spot using current 15-minute slot data
-        try:
-            from train_tensorflow import TensorFlowMessModel
-            spot_model = TensorFlowMessModel(mess_id)
-            
-            # Load attendance data for ONLY this 15-minute slot
-            attendance_records = []
-            if db:
-                try:
-                    # Round to nearest 15-minute interval
-                    slot_minute = (minute // 15) * 15
-                    slot_start = current_time.replace(minute=slot_minute, second=0, microsecond=0)
-                    slot_end = slot_start + timedelta(minutes=15)
-                    
-                    students_ref = db.collection(f'attendance/{mess_id}/{date_str}/{meal_type}/students')
-                    students = students_ref.stream()
-                    
-                    for student in students:
-                        try:
-                            data = student.to_dict()
-                            marked_at = data.get('markedAt')
-                            if isinstance(marked_at, str):
-                                marked_at = datetime.fromisoformat(marked_at.replace('Z', '+00:00'))
-                            
-                            # Only include records from current 15-min slot
-                            if slot_start <= marked_at < slot_end:
-                                attendance_records.append({
-                                    'enrollmentId': data.get('enrollmentId'),
-                                    'studentName': data.get('studentName', 'Anonymous'),
-                                    'markedAt': marked_at,
-                                    'markedBy': data.get('markedBy', 'unknown'),
-                                    'messId': mess_id,
-                                    'meal': meal_type,
-                                    'date': date_str
-                                })
-                        except:
-                            continue
-                    
-                    print(f"[OK] Loaded {len(attendance_records)} records for {mess_id} slot {slot_minute}-{slot_minute+15}")
-                except Exception as e:
-                    print(f"[WARN] Error loading 15-min slot data: {e}")
-            
-            # Train spot model if we have data
-            if attendance_records:
-                spot_model.train(attendance_records)
-                print(f"[OK] Trained spot model for {mess_id} with {len(attendance_records)} records")
-            else:
-                print(f"[WARN] No data for {mess_id} in current 15-min slot, using pre-trained model")
-        except Exception as e:
-            print(f"[WARN] Spot training failed: {e}")
+        training_info = {'trained': False, 'records': 0}
+        if force_train and db and meal_type:
+            try:
+                attendance_records = load_attendance_records(
+                    mess_id=mess_id,
+                    meal_type=meal_type,
+                    days_back=days_back
+                )
+                training_info['records'] = len(attendance_records)
+
+                if attendance_records:
+                    from train_tensorflow import MessCrowdRegressor
+                    regressor = MessCrowdRegressor(mess_id)
+                    training_info['trained'] = regressor.train(attendance_records)
+                    if training_info['trained']:
+                        prediction_service.models_cache.pop(mess_id, None)
+                        print(f"[OK] Trained model for {mess_id} ({meal_type}) with {len(attendance_records)} records")
+                    else:
+                        print(f"[WARN] Training skipped for {mess_id} due to insufficient data")
+                else:
+                    print(f"[WARN] No historical data for {mess_id} ({meal_type}); using existing model")
+            except Exception as e:
+                print(f"[WARN] Training failed for {mess_id}: {e}")
         
         # Use mess-specific TensorFlow model for predictions
         result = prediction_service.predict_next_slots(
@@ -199,12 +269,15 @@ def predict():
         # Check for model loading errors
         if 'error' in result:
             return jsonify({
-                'error': result['error'],
+                'warning': result['error'],
                 'messId': mess_id,
+                'predictions': [],
+                'training': training_info,
                 'message': f'Model not yet trained for {mess_id}. Run: python train_tensorflow.py {mess_id}'
-            }), 400
+            }), 200
         
         result['meal_type'] = meal_type
+        result['training'] = training_info
         result['slot_minute'] = (current_time.minute // 15) * 15
         return jsonify(result), 200
         
@@ -309,16 +382,33 @@ def analytics():
         if not mess_id or not db:
             return jsonify({'error': 'messId required'}), 400
         
+        if slot_param:
+            slot_param = normalize_meal_type(slot_param)
+            if not slot_param:
+                return jsonify({'error': 'Invalid slot. Use breakfast, lunch, or dinner.'}), 400
+
         # Default to today and current slot if not specified
-        if not date_param or not slot_param:
+        if not date_param:
             current_time = datetime.now()
             date_param = current_time.strftime('%Y-%m-%d')
-            hour = current_time.hour
-            minute = current_time.minute
-            slot_param = get_meal_type_exact(hour, minute)
-            
+
+        if not slot_param:
+            current_time = datetime.now()
+            slot_param = get_meal_type_exact(current_time.hour, current_time.minute)
+
             if not slot_param:
-                slot_param = 'lunch'  # Default slot
+                return jsonify({
+                    'messId': mess_id,
+                    'date': date_param,
+                    'slot': '',
+                    'attendance': [],
+                    'totalAttendance': 0,
+                    'crowdPercentage': 0,
+                    'reviews': [],
+                    'reviewCount': 0,
+                    'averageRating': 0,
+                    'warning': 'Outside meal hours. Provide slot to view analytics.'
+                }), 200
         
         try:
             # Get mess capacity
@@ -406,6 +496,10 @@ def reviews():
         mess_id = request.args.get('messId') or (request.get_json() or {}).get('messId')
         date_param = request.args.get('date')  # Allow date override for manager viewing
         slot_param = request.args.get('slot')  # Allow slot override for manager viewing
+        if slot_param:
+            slot_param = normalize_meal_type(slot_param)
+            if not slot_param:
+                return jsonify({'error': 'Invalid slot. Use breakfast, lunch, or dinner.'}), 400
         
         if not mess_id or not db:
             return jsonify({'error': 'messId required'}), 400
@@ -454,9 +548,9 @@ def reviews():
         
         else:  # GET
             # Get reviews for specific date/slot or current slot
-            if date_param and slot_param:
-                # Manager viewing specific date/slot
-                date_str = date_param
+            if slot_param:
+                # Manager viewing specific slot (with optional date)
+                date_str = date_param or datetime.now().strftime('%Y-%m-%d')
                 meal_type = slot_param
             else:
                 # Student viewing current slot

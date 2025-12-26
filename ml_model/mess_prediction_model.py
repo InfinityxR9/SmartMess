@@ -89,7 +89,7 @@ class MessPredictionModel:
             return []
         
         # Get current meal type
-        meal_type, meal_code = self.get_meal_type(current_time.hour)
+        meal_type, meal_code = self.get_meal_type(current_time.hour, current_time.minute)
         
         if meal_type is None:
             # Outside meal hours

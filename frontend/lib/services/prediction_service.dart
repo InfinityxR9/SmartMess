@@ -3,18 +3,29 @@ import 'dart:convert';
 import 'package:smart_mess/models/prediction_model.dart';
 
 class PredictionService {
-  // Points to local backend running on port 8080
-  // In production, replace with actual Cloud Run endpoint
-  static const String baseUrl = 'http://localhost:8080';
+  // Use --dart-define=SMARTMESS_BACKEND_URL=... to override in production.
+  static const String baseUrl =
+      String.fromEnvironment('SMARTMESS_BACKEND_URL', defaultValue: 'http://localhost:8080');
 
-  Future<PredictionResult?> getPrediction(String messId) async {
+  Future<PredictionResult?> getPrediction(
+    String messId, {
+    String? slot,
+    bool forceTrain = true,
+    int daysBack = 30,
+  }) async {
     try {
+      if (messId.isEmpty) {
+        return null;
+      }
       final response = await http.post(
         Uri.parse('$baseUrl/predict'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'messId': messId,
-          'devMode': true,  // Enable dev mode to show predictions outside meal times
+          'devMode': true,
+          'slot': slot,
+          'forceTrain': forceTrain,
+          'daysBack': daysBack,
         }),
       ).timeout(Duration(seconds: 10));
 

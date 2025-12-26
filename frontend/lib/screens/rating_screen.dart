@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_mess/providers/unified_auth_provider.dart';
 import 'package:smart_mess/services/review_service.dart';
@@ -20,21 +21,27 @@ class _RatingScreenState extends State<RatingScreen> {
   bool _isSuccess = false;
   String? _currentMealType;
   String? _timeWindow;
+  Timer? _mealTimer;
 
   @override
   void initState() {
     super.initState();
     _updateMealType();
+    _mealTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) {
+        _updateMealType();
+      }
+    });
   }
 
   void _updateMealType() {
     final now = DateTime.now();
     final hour = now.hour;
     final minute = now.minute;
-    
+
     String? meal;
     String? window;
-    
+
     if ((hour == 7 && minute >= 30) || (hour > 7 && hour < 9) || (hour == 9 && minute < 30)) {
       meal = 'breakfast';
       window = 'Breakfast (7:30-9:30)';
@@ -45,7 +52,7 @@ class _RatingScreenState extends State<RatingScreen> {
       meal = 'dinner';
       window = 'Dinner (19:30-21:30)';
     }
-    
+
     setState(() {
       _currentMealType = meal;
       _timeWindow = window;
@@ -54,12 +61,13 @@ class _RatingScreenState extends State<RatingScreen> {
 
   @override
   void dispose() {
+    _mealTimer?.cancel();
     _commentController.dispose();
     super.dispose();
   }
 
   void _submitReview() async {
-    if (_commentController.text.isEmpty) {
+    if (_commentController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter your feedback')),
       );
@@ -81,39 +89,38 @@ class _RatingScreenState extends State<RatingScreen> {
         messId: authProvider.messId ?? '',
         mealType: _currentMealType!,
         rating: _rating.toInt(),
-        comment: _commentController.text,
+        comment: _commentController.text.trim(),
         studentId: authProvider.userId,
         studentName: authProvider.userName,
       );
 
-      if (mounted) {
-        setState(() {
-          _isSubmitting = false;
-          if (success) {
-            _message = ' Thank you for your feedback!';
-            _isSuccess = true;
-            _commentController.clear();
-            _rating = 3.0;
+      if (!mounted) return;
 
-            Future.delayed(const Duration(seconds: 2), () {
-              if (mounted) {
-                setState(() => _message = null);
-              }
-            });
-          } else {
-            _message = 'Error submitting feedback. Please try again.';
-            _isSuccess = false;
-          }
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isSubmitting = false;
-          _message = 'Error: \';
+      setState(() {
+        _isSubmitting = false;
+        if (success) {
+          _message = 'Thank you for your feedback!';
+          _isSuccess = true;
+          _commentController.clear();
+          _rating = 3.0;
+
+          Future.delayed(const Duration(seconds: 2), () {
+            if (mounted) {
+              setState(() => _message = null);
+            }
+          });
+        } else {
+          _message = 'Error submitting feedback. Please try again.';
           _isSuccess = false;
-        });
-      }
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isSubmitting = false;
+        _message = 'Error: ${e.toString()}';
+        _isSuccess = false;
+      });
     }
   }
 
@@ -158,7 +165,7 @@ class _RatingScreenState extends State<RatingScreen> {
                       const SizedBox(height: 8),
                       Text(
                         canSubmit
-                            ? 'Submitting feedback for \'
+                            ? 'Submitting feedback for ${_timeWindow ?? ''}'
                             : 'Reviews can only be submitted during meal times:\nBreakfast (7:30-9:30)\nLunch (12:00-14:00)\nDinner (19:30-21:30)',
                         textAlign: TextAlign.center,
                         style: TextStyle(
@@ -172,7 +179,7 @@ class _RatingScreenState extends State<RatingScreen> {
               ),
               const SizedBox(height: 24),
               Text(
-                'Meal: \',
+                'Meal: ${_currentMealType ?? 'Unavailable'}',
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 12),
@@ -205,7 +212,7 @@ class _RatingScreenState extends State<RatingScreen> {
                       const SizedBox(height: 8),
                       Center(
                         child: Text(
-                          '\ / 5',
+                          '${_rating.toInt()} / 5',
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,

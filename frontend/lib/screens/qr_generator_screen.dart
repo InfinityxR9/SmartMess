@@ -224,6 +224,9 @@ class _QRGeneratorScreenState extends State<QRGeneratorScreen> {
                       builder: (context) => AttendanceViewScreen(
                         messId: authProvider.messId ?? '',
                         mealType: widget.mealType,
+                        date: (_currentQR?['date'] as String?) ??
+                            DateTime.now().toIso8601String().split('T').first,
+                        qrCodeId: _currentQR?['qrCodeId'] as String?,
                       ),
                     ));
                   },
