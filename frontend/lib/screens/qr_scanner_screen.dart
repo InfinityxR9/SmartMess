@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import 'package:smart_mess/providers/unified_auth_provider.dart';
 import 'package:smart_mess/services/attendance_service.dart';
 import 'package:smart_mess/utils/meal_time.dart';
-import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 class QRScannerScreen extends StatefulWidget {
@@ -74,7 +73,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
         }
 
         final qrData = barcode.rawValue ?? '';
-        final decodedData = jsonDecode(qrData) as Map<String, dynamic>?;
+        final decodedData = AttendanceService.decodeQrPayload(qrData);
 
         if (decodedData == null) {
           setState(() {
@@ -89,28 +88,14 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
         final mealType = decodedData['mealType'] as String?;
         final qrCodeId = decodedData['qrCodeId'] as String?;
         final qrDate = decodedData['date'] as String?;
-        final generatedAt = decodedData['generatedAt'] as String?;
-        final expiresAt = decodedData['expiresAt'] as String?;
 
-        if (messId == null || mealType == null) {
+        if (messId == null || mealType == null || qrCodeId == null) {
           setState(() {
             _message = 'QR code missing required data';
             _isSuccess = false;
             _isProcessing = false;
           });
           return;
-        }
-
-        if (expiresAt != null) {
-          final expiry = DateTime.tryParse(expiresAt);
-          if (expiry != null && DateTime.now().isAfter(expiry)) {
-            setState(() {
-              _message = 'This QR code has expired. Please scan a new one.';
-              _isSuccess = false;
-              _isProcessing = false;
-            });
-            return;
-          }
         }
 
         if (qrDate != null) {
@@ -146,6 +131,28 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
           });
           return;
         }
+
+        final validationDate = (qrDate?.trim().isNotEmpty ?? false)
+            ? qrDate!.trim()
+            : DateTime.now().toIso8601String().split('T').first;
+        final validatedQR = await _attendanceService.validateQRCode(
+          messId: messId,
+          mealType: mealType,
+          qrCodeId: qrCodeId,
+          dateStr: validationDate,
+        );
+
+        if (validatedQR == null) {
+          setState(() {
+            _message = 'This QR code is no longer active. Please scan the latest QR.';
+            _isSuccess = false;
+            _isProcessing = false;
+          });
+          return;
+        }
+
+        final generatedAt = validatedQR['generatedAt'] as String?;
+        final expiresAt = validatedQR['expiresAt'] as String?;
 
         final alreadyMarked = await _attendanceService.isAlreadyMarked(
           messId,

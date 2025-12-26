@@ -1,10 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_mess/providers/unified_auth_provider.dart';
 import 'package:smart_mess/services/attendance_service.dart';
 import 'package:smart_mess/screens/attendance_view_screen.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'dart:convert';
 
 class QRGeneratorScreen extends StatefulWidget {
   final String mealType;
@@ -23,6 +23,8 @@ class _QRGeneratorScreenState extends State<QRGeneratorScreen> {
   bool _isGenerating = false;
   Map<String, dynamic>? _currentQR;
   String? _error;
+  Timer? _expiryTimer;
+  Duration? _timeLeft;
 
   @override
   void initState() {
@@ -30,7 +32,16 @@ class _QRGeneratorScreenState extends State<QRGeneratorScreen> {
     _generateQR();
   }
 
+  @override
+  void dispose() {
+    _expiryTimer?.cancel();
+    super.dispose();
+  }
+
   Future<void> _generateQR() async {
+    if (_isGenerating) {
+      return;
+    }
     setState(() {
       _isGenerating = true;
       _error = null;
@@ -50,6 +61,7 @@ class _QRGeneratorScreenState extends State<QRGeneratorScreen> {
           _currentQR = qrData;
           _isGenerating = false;
         });
+        _startExpiryCountdown();
       }
     } catch (e) {
       if (mounted) {
@@ -59,6 +71,56 @@ class _QRGeneratorScreenState extends State<QRGeneratorScreen> {
         });
       }
     }
+  }
+
+  void _startExpiryCountdown() {
+    _expiryTimer?.cancel();
+    final expiresAtRaw = _currentQR?['expiresAt'] as String?;
+    if (expiresAtRaw == null) {
+      return;
+    }
+
+    final expiresAt = DateTime.tryParse(expiresAtRaw);
+    if (expiresAt == null) {
+      return;
+    }
+
+    setState(() {
+      _timeLeft = expiresAt.difference(DateTime.now());
+    });
+
+    _expiryTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      final remaining = expiresAt.difference(DateTime.now());
+      if (remaining <= Duration.zero) {
+        timer.cancel();
+        setState(() {
+          _timeLeft = Duration.zero;
+        });
+        _generateQR();
+      } else {
+        setState(() {
+          _timeLeft = remaining;
+        });
+      }
+    });
+  }
+
+  String _formatTimeLeft() {
+    final remaining = _timeLeft;
+    if (remaining == null) {
+      return '15:00';
+    }
+    if (remaining.isNegative) {
+      return '00:00';
+    }
+    final totalSeconds = remaining.inSeconds;
+    final minutes = (totalSeconds ~/ 60).toString().padLeft(2, '0');
+    final seconds = (totalSeconds % 60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
   }
 
   @override
@@ -131,7 +193,7 @@ class _QRGeneratorScreenState extends State<QRGeneratorScreen> {
                         _buildInfoRow('Status', 'Active'),
                         _buildInfoRow(
                           'Expires In',
-                          '15 minutes',
+                          _formatTimeLeft(),
                         ),
                       ],
                     ),
@@ -194,7 +256,7 @@ class _QRGeneratorScreenState extends State<QRGeneratorScreen> {
                         '1. Display this QR code on screen or print it\n'
                         '2. Students scan with their phones\n'
                         '3. QR expires in 15 minutes\n'
-                        '4. Generate a new one for the next batch',
+                        '4. A fresh QR is generated automatically after expiry',
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.blue.shade900,
@@ -277,7 +339,7 @@ class _QRGeneratorScreenState extends State<QRGeneratorScreen> {
       );
     }
 
-    final qrPayload = jsonEncode(_currentQR);
+    final qrPayload = AttendanceService.encodeQrPayload(_currentQR!);
 
     return Container(
       decoration: BoxDecoration(

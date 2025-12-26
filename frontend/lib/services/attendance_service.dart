@@ -1,9 +1,41 @@
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
 
 class AttendanceService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   static const uuid = Uuid();
+  static const String _qrPayloadPrefix = 'SMARTMESS_QR_V1:';
+
+  static String encodeQrPayload(Map<String, dynamic> qrData) {
+    final jsonText = jsonEncode(qrData);
+    final encoded = base64Url.encode(utf8.encode(jsonText));
+    return '$_qrPayloadPrefix$encoded';
+  }
+
+  static Map<String, dynamic>? decodeQrPayload(String rawValue) {
+    final trimmed = rawValue.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+
+    try {
+      String jsonText;
+      if (trimmed.startsWith(_qrPayloadPrefix)) {
+        final encoded = trimmed.substring(_qrPayloadPrefix.length);
+        jsonText = utf8.decode(base64Url.decode(encoded));
+      } else {
+        jsonText = trimmed;
+      }
+      final decoded = jsonDecode(jsonText);
+      if (decoded is Map<String, dynamic>) {
+        return decoded;
+      }
+    } catch (_) {
+      return null;
+    }
+    return null;
+  }
 
   /// Mark attendance for a student via QR code
   /// Returns true if marked successfully, false if already marked or error
@@ -147,16 +179,20 @@ class AttendanceService {
   /// Verify and get current QR code
   Future<Map<String, dynamic>?> getCurrentQRCode(
     String messId,
-    String mealType,
+    String mealType, {
+    String? dateStr,
+  }
   ) async {
     try {
       final today = DateTime.now();
-      final dateStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+      final resolvedDate = (dateStr?.trim().isNotEmpty ?? false)
+          ? dateStr!.trim()
+          : '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
 
       final doc = await _firestore
           .collection('qr_codes')
           .doc(messId)
-          .collection(dateStr)
+          .collection(resolvedDate)
           .doc(mealType)
           .get();
 
@@ -178,6 +214,47 @@ class AttendanceService {
       print('[QR] Error getting QR: $e');
       return null;
     }
+  }
+
+  Future<Map<String, dynamic>?> validateQRCode({
+    required String messId,
+    required String mealType,
+    required String qrCodeId,
+    required String dateStr,
+  }) async {
+    final resolvedDate = dateStr.trim().isEmpty
+        ? DateTime.now().toIso8601String().split('T').first
+        : dateStr.trim();
+
+    final qrData = await getCurrentQRCode(
+      messId,
+      mealType,
+      dateStr: resolvedDate,
+    );
+
+    if (qrData == null) {
+      return null;
+    }
+
+    final storedMessId = (qrData['messId'] ?? '').toString();
+    final storedMeal = (qrData['mealType'] ?? '').toString();
+    final storedDate = (qrData['date'] ?? '').toString();
+    final storedQrId = (qrData['qrCodeId'] ?? '').toString();
+
+    if (storedMessId.isNotEmpty && storedMessId != messId) {
+      return null;
+    }
+    if (storedMeal.isNotEmpty && storedMeal != mealType) {
+      return null;
+    }
+    if (storedDate.isNotEmpty && storedDate != resolvedDate) {
+      return null;
+    }
+    if (storedQrId.isEmpty || storedQrId != qrCodeId) {
+      return null;
+    }
+
+    return qrData;
   }
 
   /// Mark attendance manually (manager marks a student)
