@@ -247,6 +247,74 @@ class _ManagerPortalTabsScreenState extends State<ManagerPortalTabsScreen> {
   }
 }
 
+class ManagerReviewsScreen extends StatelessWidget {
+  final String messId;
+
+  const ManagerReviewsScreen({
+    Key? key,
+    required this.messId,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Reviews'),
+        elevation: 0,
+      ),
+      body: ReviewsTab(messId: messId),
+    );
+  }
+}
+
+class ManagerPredictionAnalysisScreen extends StatelessWidget {
+  final String messId;
+
+  const ManagerPredictionAnalysisScreen({
+    Key? key,
+    required this.messId,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Prediction + Analysis'),
+        elevation: 0,
+      ),
+      body: ManagerAttendanceTab(
+        messId: messId,
+        showPredictions: true,
+        showStudentList: false,
+      ),
+    );
+  }
+}
+
+class ManagerAttendanceScreen extends StatelessWidget {
+  final String messId;
+
+  const ManagerAttendanceScreen({
+    Key? key,
+    required this.messId,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Attendance'),
+        elevation: 0,
+      ),
+      body: ManagerAttendanceTab(
+        messId: messId,
+        showPredictions: false,
+        showStudentList: true,
+      ),
+    );
+  }
+}
+
 class ManagerPredictionTab extends StatefulWidget {
   final String messId;
 

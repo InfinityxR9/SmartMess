@@ -7,8 +7,9 @@ import 'package:smart_mess/screens/manual_attendance_screen.dart';
 import 'package:smart_mess/screens/menu_creation_screen.dart';
 import 'package:smart_mess/screens/menu_screen.dart';
 import 'package:smart_mess/screens/manager_portal_tabs_screen.dart';
-import 'package:smart_mess/screens/student_portal_tabs_screen.dart';
 import 'package:smart_mess/screens/rating_screen.dart';
+import 'package:smart_mess/screens/student_analytics_predictions_screen.dart';
+import 'package:smart_mess/screens/student_portal_tabs_screen.dart';
 import 'package:smart_mess/utils/meal_time.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -334,7 +335,24 @@ class _HomeScreenState extends State<HomeScreen> {
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
-                                  builder: (context) => const StudentPortalTabsScreen(),
+                                  builder: (context) => const StudentAnalyticsPredictionsScreen(
+                                    includeScaffold: true,
+                                    showReviews: false,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          _buildActionCard(
+                            icon: Icons.rate_review,
+                            title: 'Reviews',
+                            color: Color(0xFFFF6B6B),
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => StudentReviewsScreen(
+                                    messId: authProvider.messId ?? '',
+                                  ),
                                 ),
                               );
                             },
@@ -364,9 +382,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
-                                  builder: (context) => ManagerPortalTabsScreen(
+                                  builder: (context) => ManagerReviewsScreen(
                                     messId: authProvider.messId ?? '',
-                                    initialIndex: 0,
                                   ),
                                 ),
                               );
@@ -379,9 +396,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
-                                  builder: (context) => ManagerPortalTabsScreen(
+                                  builder: (context) => ManagerPredictionAnalysisScreen(
                                     messId: authProvider.messId ?? '',
-                                    initialIndex: 1,
                                   ),
                                 ),
                               );
@@ -394,24 +410,13 @@ class _HomeScreenState extends State<HomeScreen> {
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
-                                  builder: (context) => ManagerPortalTabsScreen(
+                                  builder: (context) => ManagerAttendanceScreen(
                                     messId: authProvider.messId ?? '',
-                                    initialIndex: 2,
                                   ),
                                 ),
                               );
                             },
                           ),
-                        ],
-                      ),
-                      SizedBox(height: 16),
-                      GridView.count(
-                        crossAxisCount: 2,
-                        shrinkWrap: true,
-                        physics: NeverScrollableScrollPhysics(),
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        children: [
                           _buildActionCard(
                             icon: Icons.qr_code,
                             title: 'Generate QR',

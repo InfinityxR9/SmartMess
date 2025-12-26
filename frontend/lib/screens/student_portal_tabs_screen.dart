@@ -9,7 +9,12 @@ import 'package:smart_mess/utils/meal_time.dart';
 import 'package:smart_mess/widgets/reviews_tab.dart';
 
 class StudentPortalTabsScreen extends StatefulWidget {
-  const StudentPortalTabsScreen({Key? key}) : super(key: key);
+  final int initialIndex;
+
+  const StudentPortalTabsScreen({
+    Key? key,
+    this.initialIndex = 0,
+  }) : super(key: key);
 
   @override
   State<StudentPortalTabsScreen> createState() => _StudentPortalTabsScreenState();
@@ -17,6 +22,12 @@ class StudentPortalTabsScreen extends StatefulWidget {
 
 class _StudentPortalTabsScreenState extends State<StudentPortalTabsScreen> {
   int _selectedIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedIndex = widget.initialIndex.clamp(0, 1);
+  }
 
   void _showStudentActions(BuildContext context, UnifiedAuthProvider authProvider) {
     final rootContext = context;
@@ -217,6 +228,26 @@ class _StudentPortalTabsScreenState extends State<StudentPortalTabsScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class StudentReviewsScreen extends StatelessWidget {
+  final String messId;
+
+  const StudentReviewsScreen({
+    Key? key,
+    required this.messId,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Reviews'),
+        elevation: 0,
+      ),
+      body: ReviewsTab(messId: messId),
     );
   }
 }
