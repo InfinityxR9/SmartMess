@@ -11,8 +11,29 @@ import json
 from datetime import datetime, timedelta
 import numpy as np
 
+def _resolve_ml_model_dir():
+    env_path = os.environ.get('ML_MODEL_DIR')
+    candidates = []
+    if env_path:
+        candidates.append(env_path)
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    candidates.extend([
+        os.path.join(base_dir, '..', 'ml_model'),
+        os.path.join(base_dir, 'ml_model'),
+        os.path.join(os.getcwd(), 'ml_model'),
+        '/ml_model',
+    ])
+    for path in candidates:
+        if path and os.path.isdir(path):
+            return os.path.abspath(path)
+    return None
+
 # Add ml_model to path to import mess_prediction_model
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'ml_model'))
+_ML_MODEL_DIR = _resolve_ml_model_dir()
+if _ML_MODEL_DIR:
+    sys.path.insert(0, _ML_MODEL_DIR)
+else:
+    print('[WARN] ml_model directory not found. Predictions may be unavailable.')
 
 from mess_prediction_model import MessPredictionModel, create_or_load_mess_model
 
