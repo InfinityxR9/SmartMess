@@ -90,8 +90,6 @@ class _RatingScreenState extends State<RatingScreen> {
         mealType: _currentMealType!,
         rating: _rating.toInt(),
         comment: _commentController.text.trim(),
-        studentId: authProvider.userId,
-        studentName: authProvider.userName,
       );
 
       if (!mounted) return;

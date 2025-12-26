@@ -25,123 +25,83 @@ class _MenuScreenState extends State<MenuScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: StreamBuilder<Menu?>(
-        stream: _firestoreService.getTodayMenuStream(widget.messId),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          }
+  List<String> _splitMenuText(String text) {
+    return text
+        .split(RegExp(r'[\n,]'))
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
+  }
 
-          if (!snapshot.hasData || snapshot.data == null) {
-            return FutureBuilder<Map<String, dynamic>?>(
-              future: _fallbackMenu,
-              builder: (context, fallbackSnapshot) {
-                if (fallbackSnapshot.connectionState == ConnectionState.waiting) {
-                  return Center(child: CircularProgressIndicator());
-                }
+  String _dayNameFor(DateTime date) {
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    return days[date.weekday - 1];
+  }
 
-                final fallbackData = fallbackSnapshot.data;
-                if (fallbackData == null) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Icon(Icons.restaurant_menu, size: 64, color: Colors.grey),
-                        SizedBox(height: 16),
-                        Text('No menu available for today'),
-                      ],
-                    ),
-                  );
-                }
+  Widget _buildMealCard({
+    required String title,
+    required IconData icon,
+    required List<String> items,
+    required Color accent,
+  }) {
+    if (items.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
-                return _buildFallbackMenu(fallbackData);
-              },
-            );
-          }
-
-          final menu = snapshot.data!;
-
-          return SingleChildScrollView(
-            padding: EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(height: 16),
-                Text(
-                  'Today\'s Menu',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  _formatDate(menu.date),
-                  style: TextStyle(color: Colors.grey),
-                ),
-                SizedBox(height: 20),
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: NeverScrollableScrollPhysics(),
-                  itemCount: menu.items.length,
-                  separatorBuilder: (_, __) => Divider(),
-                  itemBuilder: (context, index) {
-                    final item = menu.items[index];
-                    return Card(
-                      child: Padding(
-                        padding: EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              item.name,
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                            if (item.description != null) ...[
-                              SizedBox(height: 8),
-                              Text(
-                                item.description!,
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: accent.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: accent),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: items
+                .map((item) => Chip(
+                      label: Text(item),
+                      backgroundColor: Colors.white,
+                      shape: StadiumBorder(
+                        side: BorderSide(color: accent.withValues(alpha: 0.2)),
                       ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          );
-        },
+                    ))
+                .toList(),
+          ),
+        ],
       ),
     );
   }
 
-  String _formatDate(DateTime date) {
-    final days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    final months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    
-    return '${days[date.weekday - 1]}, ${date.day} ${months[date.month - 1]}';
-  }
+  Widget _buildMenuContent({
+    required String dayLabel,
+    required List<String> breakfastItems,
+    required List<String> lunchItems,
+    required List<String> dinnerItems,
+    String? note,
+  }) {
+    final hasAny = breakfastItems.isNotEmpty || lunchItems.isNotEmpty || dinnerItems.isNotEmpty;
 
-  Widget _buildFallbackMenu(Map<String, dynamic> data) {
-    final now = DateTime.now();
-    final days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    final dayName = days[now.weekday - 1];
-    final dayMenu = (data['days'] as Map<String, dynamic>?)?[dayName] as Map<String, dynamic>?;
-
-    if (dayMenu == null) {
-      return Center(
+    if (!hasAny) {
+      return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
+          children: [
             Icon(Icons.restaurant_menu, size: 64, color: Colors.grey),
             SizedBox(height: 16),
             Text('No menu available for today'),
@@ -150,53 +110,64 @@ class _MenuScreenState extends State<MenuScreen> {
       );
     }
 
-    final note = data['note'] as String?;
-    final meals = ['Breakfast', 'Lunch', 'Dinner'];
-
     return SingleChildScrollView(
-      padding: EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 16),
-          Text(
-            'Today\'s Menu',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            dayName,
-            style: TextStyle(color: Colors.grey),
-          ),
-          const SizedBox(height: 20),
-          ...meals.map((meal) {
-            final items = (dayMenu[meal] as List?)?.cast<String>() ?? [];
-            if (items.isEmpty) {
-              return const SizedBox.shrink();
-            }
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF6200EE), Color(0xFF03DAC6)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Row(
               children: [
-                Text(
-                  meal,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                ...items.map(
-                  (item) => Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Text(
-                        item,
-                        style: const TextStyle(fontSize: 14),
+                const Icon(Icons.restaurant_menu, color: Colors.white, size: 30),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Today\'s Menu',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
+                    Text(
+                      dayLabel,
+                      style: const TextStyle(color: Colors.white70, fontSize: 14),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
               ],
-            );
-          }).toList(),
+            ),
+          ),
+          const SizedBox(height: 20),
+          _buildMealCard(
+            title: 'Breakfast',
+            icon: Icons.breakfast_dining,
+            items: breakfastItems,
+            accent: const Color(0xFFF9A825),
+          ),
+          _buildMealCard(
+            title: 'Lunch',
+            icon: Icons.lunch_dining,
+            items: lunchItems,
+            accent: const Color(0xFF2E7D32),
+          ),
+          _buildMealCard(
+            title: 'Dinner',
+            icon: Icons.dinner_dining,
+            items: dinnerItems,
+            accent: const Color(0xFF1565C0),
+          ),
           if (note != null && note.isNotEmpty) ...[
             const SizedBox(height: 8),
             Card(
@@ -211,6 +182,83 @@ class _MenuScreenState extends State<MenuScreen> {
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final today = DateTime.now();
+    final dayLabel = _dayNameFor(today);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Mess Menu'),
+        elevation: 0,
+      ),
+      body: FutureBuilder<Map<String, dynamic>?>(
+        future: _fallbackMenu,
+        builder: (context, fallbackSnapshot) {
+          return StreamBuilder<Menu?>(
+            stream: _firestoreService.getTodayMenuStream(widget.messId),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting &&
+                  fallbackSnapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              final fallbackData = fallbackSnapshot.data;
+              final fallbackDays = fallbackData?['days'] as Map<String, dynamic>?;
+              final fallbackDayMenu = fallbackDays?[dayLabel] as Map<String, dynamic>?;
+              final note = fallbackData?['note'] as String?;
+
+              final fallbackBreakfast =
+                  (fallbackDayMenu?['Breakfast'] as List?)?.cast<String>() ?? [];
+              final fallbackLunch =
+                  (fallbackDayMenu?['Lunch'] as List?)?.cast<String>() ?? [];
+              final fallbackDinner =
+                  (fallbackDayMenu?['Dinner'] as List?)?.cast<String>() ?? [];
+
+              final menu = snapshot.data;
+              String? overrideBreakfast;
+              String? overrideLunch;
+              String? overrideDinner;
+
+              if (menu != null) {
+                for (final item in menu.items) {
+                  if (item.name == 'Breakfast') {
+                    overrideBreakfast = item.description;
+                  } else if (item.name == 'Lunch') {
+                    overrideLunch = item.description;
+                  } else if (item.name == 'Dinner') {
+                    overrideDinner = item.description;
+                  }
+                }
+              }
+
+              final breakfastOverride = overrideBreakfast;
+              final lunchOverride = overrideLunch;
+              final dinnerOverride = overrideDinner;
+              final breakfastItems = (breakfastOverride != null && breakfastOverride.isNotEmpty)
+                  ? _splitMenuText(breakfastOverride)
+                  : fallbackBreakfast;
+              final lunchItems = (lunchOverride != null && lunchOverride.isNotEmpty)
+                  ? _splitMenuText(lunchOverride)
+                  : fallbackLunch;
+              final dinnerItems = (dinnerOverride != null && dinnerOverride.isNotEmpty)
+                  ? _splitMenuText(dinnerOverride)
+                  : fallbackDinner;
+
+              return _buildMenuContent(
+                dayLabel: dayLabel,
+                breakfastItems: breakfastItems,
+                lunchItems: lunchItems,
+                dinnerItems: dinnerItems,
+                note: note,
+              );
+            },
+          );
+        },
       ),
     );
   }

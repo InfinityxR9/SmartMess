@@ -8,6 +8,7 @@ import 'package:smart_mess/screens/qr_scanner_screen.dart';
 import 'package:smart_mess/screens/menu_screen.dart';
 import 'package:smart_mess/screens/rating_screen.dart';
 import 'package:smart_mess/widgets/crowd_badge.dart';
+import 'package:smart_mess/utils/meal_time.dart';
 
 class CrowdDashboardScreen extends StatefulWidget {
   const CrowdDashboardScreen({Key? key}) : super(key: key);
@@ -104,38 +105,37 @@ class _CrowdDashboardScreenState extends State<CrowdDashboardScreen> {
   }
 
   Widget _buildScanPage(dynamic mess) {
-    // Show meal type selector for QR scanning
+    final slot = getCurrentMealSlot();
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text('Select Meal Type to Scan QR', style: Theme.of(context).textTheme.headlineSmall),
+          Text(
+            slot == null
+                ? 'Outside meal hours'
+                : 'Current Slot: ${slot.label} (${slot.window})',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          SizedBox(height: 12),
+          Text(
+            slot == null
+                ? 'Attendance can only be marked during meal times.'
+                : 'Scan the QR for the current meal slot.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
           SizedBox(height: 24),
           ElevatedButton(
-            onPressed: () {
-              Navigator.push(context, MaterialPageRoute(
-                builder: (_) => QRScannerScreen(mealType: 'breakfast'),
-              ));
-            },
-            child: Text('Breakfast'),
-          ),
-          SizedBox(height: 12),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.push(context, MaterialPageRoute(
-                builder: (_) => QRScannerScreen(mealType: 'lunch'),
-              ));
-            },
-            child: Text('Lunch'),
-          ),
-          SizedBox(height: 12),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.push(context, MaterialPageRoute(
-                builder: (_) => QRScannerScreen(mealType: 'dinner'),
-              ));
-            },
-            child: Text('Dinner'),
+            onPressed: slot == null
+                ? null
+                : () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => QRScannerScreen(mealType: slot.type),
+                      ),
+                    );
+                  },
+            child: Text(slot == null ? 'Scan Disabled' : 'Scan QR'),
           ),
         ],
       ),

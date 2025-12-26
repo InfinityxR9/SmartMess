@@ -33,6 +33,14 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
       initialDate: DateTime(2005),
       firstDate: DateTime(1990),
       lastDate: DateTime.now(),
+      locale: const Locale('en', 'GB'),
+      builder: (context, child) {
+        return Localizations.override(
+          context: context,
+          locale: const Locale('en', 'GB'),
+          child: child!,
+        );
+      },
     );
     if (picked != null) {
       _dobController.text =

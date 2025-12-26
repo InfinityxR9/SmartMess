@@ -3,6 +3,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_mess/providers/unified_auth_provider.dart';
 import 'package:smart_mess/services/attendance_service.dart';
+import 'package:smart_mess/utils/meal_time.dart';
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
@@ -48,6 +49,25 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
     for (final barcode in barcodes) {
       try {
         setState(() => _isProcessing = true);
+        final slot = getCurrentMealSlot();
+        if (slot == null) {
+          setState(() {
+            _message = 'Outside meal hours. Attendance can only be marked during meal times.';
+            _isSuccess = false;
+            _isProcessing = false;
+          });
+          return;
+        }
+
+        if (slot.type != widget.mealType) {
+          setState(() {
+            _message = 'Attendance is only allowed for ${slot.label} right now.';
+            _isSuccess = false;
+            _isProcessing = false;
+          });
+          return;
+        }
+
         final qrData = barcode.rawValue ?? '';
         final decodedData = jsonDecode(qrData) as Map<String, dynamic>?;
 
@@ -113,9 +133,9 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
           return;
         }
 
-        if (mealType != widget.mealType) {
+        if (mealType != slot.type) {
           setState(() {
-            _message = 'QR code is for ${mealType.toUpperCase()}, not ${widget.mealType.toUpperCase()}';
+            _message = 'QR code is for ${mealType.toUpperCase()}, not ${slot.type.toUpperCase()}';
             _isSuccess = false;
             _isProcessing = false;
           });
@@ -125,7 +145,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
         final alreadyMarked = await _attendanceService.isAlreadyMarked(
           messId,
           authProvider.userId ?? '',
-          mealType,
+          slot.type,
         );
 
         if (alreadyMarked) {
@@ -140,7 +160,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
         final success = await _attendanceService.markAttendanceViaQR(
           messId: messId,
           studentId: authProvider.userId ?? '',
-          mealType: mealType,
+          mealType: slot.type,
           enrollmentId: authProvider.enrollmentId ?? '',
           studentName: authProvider.userName ?? '',
           qrCodeId: qrCodeId,

@@ -6,8 +6,8 @@ import 'package:smart_mess/screens/qr_generator_screen.dart';
 import 'package:smart_mess/screens/manual_attendance_screen.dart';
 import 'package:smart_mess/screens/menu_creation_screen.dart';
 import 'package:smart_mess/screens/menu_screen.dart';
-import 'package:smart_mess/screens/analytics_enhanced_screen.dart';
-import 'package:smart_mess/screens/student_analytics_predictions_screen.dart';
+import 'package:smart_mess/screens/manager_portal_tabs_screen.dart';
+import 'package:smart_mess/screens/student_portal_tabs_screen.dart';
 import 'package:smart_mess/screens/rating_screen.dart';
 import 'package:smart_mess/utils/meal_time.dart';
 
@@ -19,6 +19,14 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<UnifiedAuthProvider>(
@@ -77,6 +85,7 @@ class _HomeScreenState extends State<HomeScreen> {
               elevation: 0,
             ),
             body: SingleChildScrollView(
+              controller: _scrollController,
               child: Container(
                 padding: EdgeInsets.all(16),
                 child: Column(
@@ -274,15 +283,24 @@ class _HomeScreenState extends State<HomeScreen> {
                             title: 'Mark Attendance',
                             color: Color(0xFF6200EE),
                             onTap: () {
-                              _showMealSelector(context, (mealType) {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (context) => QRScannerScreen(
-                                      mealType: mealType,
+                              final slot = getCurrentMealSlot();
+                              if (slot == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Outside meal hours. Attendance can only be marked during meal times.',
                                     ),
                                   ),
                                 );
-                              });
+                                return;
+                              }
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => QRScannerScreen(
+                                    mealType: slot.type,
+                                  ),
+                                ),
+                              );
                             },
                           ),
                           _buildActionCard(
@@ -316,7 +334,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
-                                  builder: (context) => StudentAnalyticsPredictionsScreen(),
+                                  builder: (context) => const StudentPortalTabsScreen(),
                                 ),
                               );
                             },
@@ -325,13 +343,68 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ] else ...[
                       Text(
-                        'Manager Actions',
+                        'Manager Insights',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       SizedBox(height: 12),
+                      GridView.count(
+                        crossAxisCount: 2,
+                        shrinkWrap: true,
+                        physics: NeverScrollableScrollPhysics(),
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        children: [
+                          _buildActionCard(
+                            icon: Icons.rate_review,
+                            title: 'Review',
+                            color: Color(0xFFFF6B6B),
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => ManagerPortalTabsScreen(
+                                    messId: authProvider.messId ?? '',
+                                    initialIndex: 0,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          _buildActionCard(
+                            icon: Icons.insights,
+                            title: 'Prediction + Analysis',
+                            color: Color(0xFF6200EE),
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => ManagerPortalTabsScreen(
+                                    messId: authProvider.messId ?? '',
+                                    initialIndex: 1,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          _buildActionCard(
+                            icon: Icons.people_alt,
+                            title: 'Attendance',
+                            color: Color(0xFF03DAC6),
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => ManagerPortalTabsScreen(
+                                    messId: authProvider.messId ?? '',
+                                    initialIndex: 2,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 16),
                       GridView.count(
                         crossAxisCount: 2,
                         shrinkWrap: true,
@@ -400,22 +473,6 @@ class _HomeScreenState extends State<HomeScreen> {
                               );
                             },
                           ),
-                          _buildActionCard(
-                            icon: Icons.bar_chart,
-                            title: 'Analytics',
-                            color: Color(0xFFFFC107),
-                            onTap: () {
-                              final authProvider =
-                                  context.read<UnifiedAuthProvider>();
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) => AnalyticsEnhancedScreen(
-                                    messId: authProvider.messId ?? '',
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
                         ],
                       ),
                     ],
@@ -469,49 +526,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showMealSelector(BuildContext context, Function(String) onMealSelected) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Container(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Select Meal',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 16),
-            ListTile(
-              leading: Icon(Icons.breakfast_dining, color: Color(0xFF6200EE)),
-              title: Text('Breakfast'),
-              onTap: () {
-                Navigator.pop(context);
-                onMealSelected('breakfast');
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.lunch_dining, color: Color(0xFF6200EE)),
-              title: Text('Lunch'),
-              onTap: () {
-                Navigator.pop(context);
-                onMealSelected('lunch');
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.dinner_dining, color: Color(0xFF6200EE)),
-              title: Text('Dinner'),
-              onTap: () {
-                Navigator.pop(context);
-                onMealSelected('dinner');
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildActionCard({
     required IconData icon,
     required String title,
@@ -524,7 +538,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
+          border: Border.all(color: color.withOpacity(0.3)),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -545,4 +559,3 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-

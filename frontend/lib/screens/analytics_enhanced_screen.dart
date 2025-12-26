@@ -313,9 +313,9 @@ class _AnalyticsEnhancedScreenState extends State<AnalyticsEnhancedScreen> {
                                     Row(
                                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                       children: [
-                                        Text(
-                                          reviewData['studentName'] ?? 'Anonymous',
-                                          style: const TextStyle(fontWeight: FontWeight.bold),
+                                        const Text(
+                                          'Anonymous',
+                                          style: TextStyle(fontWeight: FontWeight.bold),
                                         ),
                                         Row(
                                           children: List.generate(

@@ -51,6 +51,24 @@ except Exception as e:
 # Initialize TensorFlow prediction service (mess-specific models)
 prediction_service = PredictionService()
 
+def _has_recent_model(mess_id, max_age_minutes=60):
+    """Check if a recent trained model exists for this mess."""
+    metadata_path = os.path.join(
+        os.path.dirname(__file__), '..', 'ml_model', 'models', f'{mess_id}_metadata.json'
+    )
+    if not os.path.exists(metadata_path):
+        return False
+    try:
+        with open(metadata_path, 'r') as f:
+            metadata = json.load(f)
+        trained_at = metadata.get('trained_at')
+        if not trained_at:
+            return False
+        trained_time = datetime.fromisoformat(trained_at)
+        return datetime.now() - trained_time < timedelta(minutes=max_age_minutes)
+    except Exception:
+        return False
+
 @app.route('/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
@@ -234,35 +252,41 @@ def predict():
             except Exception as e:
                 print(f"[WARN] Could not get mess capacity: {e}")
         
-        training_info = {'trained': False, 'records': 0, 'usedDummy': False}
+        training_info = {'trained': False, 'records': 0, 'usedDummy': False, 'skippedRecent': False}
         if force_train and meal_type:
             try:
-                attendance_records = []
-                if db:
-                    attendance_records = load_attendance_records(
-                        mess_id=mess_id,
-                        meal_type=meal_type,
-                        days_back=days_back
-                    )
-                    training_info['records'] = len(attendance_records)
-
-                if not attendance_records and dev_mode:
-                    from train_tensorflow import generate_dummy_attendance_data
-                    attendance_records = generate_dummy_attendance_data(mess_id, days=7)
-                    training_info['records'] = len(attendance_records)
-                    training_info['usedDummy'] = True
-
-                if attendance_records:
-                    from train_tensorflow import MessCrowdRegressor
-                    regressor = MessCrowdRegressor(mess_id)
-                    training_info['trained'] = regressor.train(attendance_records)
-                    if training_info['trained']:
-                        prediction_service.models_cache.pop(mess_id, None)
-                        print(f"[OK] Trained model for {mess_id} ({meal_type}) with {len(attendance_records)} records")
-                    else:
-                        print(f"[WARN] Training skipped for {mess_id} due to insufficient data")
+                if _has_recent_model(mess_id, max_age_minutes=60):
+                    training_info['skippedRecent'] = True
+                    force_train = False
+                if not force_train:
+                    pass
                 else:
-                    print(f"[WARN] No historical data for {mess_id} ({meal_type}); using existing model")
+                    attendance_records = []
+                    if db:
+                        attendance_records = load_attendance_records(
+                            mess_id=mess_id,
+                            meal_type=meal_type,
+                            days_back=days_back
+                        )
+                        training_info['records'] = len(attendance_records)
+
+                    if not attendance_records and dev_mode:
+                        from train_tensorflow import generate_dummy_attendance_data
+                        attendance_records = generate_dummy_attendance_data(mess_id, days=7)
+                        training_info['records'] = len(attendance_records)
+                        training_info['usedDummy'] = True
+
+                    if attendance_records:
+                        from train_tensorflow import MessCrowdRegressor
+                        regressor = MessCrowdRegressor(mess_id)
+                        training_info['trained'] = regressor.train(attendance_records)
+                        if training_info['trained']:
+                            prediction_service.models_cache.pop(mess_id, None)
+                            print(f"[OK] Trained model for {mess_id} ({meal_type}) with {len(attendance_records)} records")
+                        else:
+                            print(f"[WARN] Training skipped for {mess_id} due to insufficient data")
+                    else:
+                        print(f"[WARN] No historical data for {mess_id} ({meal_type}); using existing model")
             except Exception as e:
                 print(f"[WARN] Training failed for {mess_id}: {e}")
         
@@ -449,7 +473,7 @@ def analytics():
             for doc in reviews_docs:
                 data = doc.to_dict()
                 reviews_list.append({
-                    'studentName': data.get('studentName', 'Anonymous'),
+                    'studentName': 'Anonymous',
                     'rating': data.get('rating', 0),
                     'comment': data.get('comment', ''),
                     'submittedAt': data.get('submittedAt', '')
@@ -529,8 +553,7 @@ def reviews():
             try:
                 # Store review in: reviews/<messId>/<date>/<slot>/items/<reviewId>
                 review_data = {
-                    'studentId': data.get('studentId'),
-                    'studentName': data.get('studentName', 'Anonymous'),
+                    'studentName': 'Anonymous',
                     'rating': int(data.get('rating', 0)),
                     'comment': data.get('comment', ''),
                     'submittedAt': datetime.now().isoformat(),
@@ -581,7 +604,9 @@ def reviews():
                 reviews = reviews_ref.stream()
                 
                 for review in reviews:
-                    review_data = review.to_dict()
+                    review_data = review.to_dict() or {}
+                    review_data.pop('studentId', None)
+                    review_data['studentName'] = 'Anonymous'
                     reviews_list.append(review_data)
                 
                 return jsonify({

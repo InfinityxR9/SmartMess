@@ -50,6 +50,20 @@ class MessPredictionModel:
             else:
                 print(f"[WARN] Scaler not found for {self.mess_id}")
                 return False
+
+            expected_features = 4
+            scaler_features = getattr(self.scaler, 'n_features_in_', None)
+            model_features = None
+            try:
+                model_features = self.model.input_shape[-1]
+            except Exception:
+                model_features = None
+
+            if scaler_features not in (None, expected_features) or model_features not in (None, expected_features):
+                print(f"[WARN] Feature mismatch for {self.mess_id}. Retrain required.")
+                self.model = None
+                self.scaler = None
+                return False
             
             if os.path.exists(self.metadata_path):
                 with open(self.metadata_path, 'r') as f:
@@ -118,11 +132,12 @@ class MessPredictionModel:
                 break
             
             try:
-                # Create feature vector: [hour, day_of_week, meal_type]
+                # Create feature vector: [hour, day_of_week, meal_type, slot_minute]
                 hour = temp_time.hour
                 day_of_week = temp_time.weekday()
+                slot_minute = (temp_time.minute // 15) * 15
                 
-                features = np.array([[hour, day_of_week, meal_code]], dtype=np.float32)
+                features = np.array([[hour, day_of_week, meal_code, slot_minute]], dtype=np.float32)
                 
                 # Scale features
                 features_scaled = self.scaler.transform(features)

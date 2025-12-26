@@ -7,6 +7,7 @@ Trains on mess-specific attendance data from Firebase
 import os
 import sys
 import json
+from collections import defaultdict
 from datetime import datetime, timedelta
 import firebase_admin
 from firebase_admin import credentials, firestore
@@ -54,11 +55,12 @@ class MessCrowdRegressor:
     def prepare_data(self, attendance_records):
         """
         Prepare training data from attendance records
-        Creates features: hour, day_of_week, meal_type (encoded), historical_count
-        Target: crowd_count
+        Creates features: hour, day_of_week, meal_type (encoded), slot_minute
+        Target: crowd_count per 15-minute slot
         """
         features = []
         targets = []
+        bucket_counts = defaultdict(int)
         
         for record in attendance_records:
             try:
@@ -83,16 +85,24 @@ class MessCrowdRegressor:
                 elif 19 < hour < 21 or (hour == 19 and dt.minute >= 30) or (hour == 21 and dt.minute < 30):
                     meal_type = 2  # Dinner (19:30-21:30)
                 
-                # Create feature vector
-                feature_vector = [hour, day_of_week, meal_type]
-                features.append(feature_vector)
-                targets.append(1)  # Each record = 1 student
+                if meal_type < 0:
+                    continue
+
+                # Group by 15-minute slot to learn per-slot crowd counts
+                slot_minute = (dt.minute // 15) * 15
+                bucket_key = (dt.date(), hour, slot_minute, day_of_week, meal_type)
+                bucket_counts[bucket_key] += 1
                 
             except Exception as e:
                 continue
         
+        for (slot_date, hour, slot_minute, day_of_week, meal_type), count in bucket_counts.items():
+            feature_vector = [hour, day_of_week, meal_type, slot_minute]
+            features.append(feature_vector)
+            targets.append(count)
+
         if len(features) < 5:
-            print(f"[WARN] Insufficient data for {self.mess_id}: {len(features)} records")
+            print(f"[WARN] Insufficient data for {self.mess_id}: {len(features)} slot buckets")
             return None, None
         
         X = np.array(features, dtype=np.float32)
@@ -125,9 +135,10 @@ class MessCrowdRegressor:
         # Train with small batch and few epochs for quick training
         history = self.model.fit(
             X_scaled, y,
-            epochs=20,
+            epochs=10,
             batch_size=4,
             validation_split=0.2,
+            callbacks=[keras.callbacks.EarlyStopping(monitor='loss', patience=3, restore_best_weights=True)],
             verbose=0
         )
         
@@ -140,7 +151,7 @@ class MessCrowdRegressor:
             'mess_id': self.mess_id,
             'trained_at': datetime.now().isoformat(),
             'training_samples': len(X_scaled),
-            'input_features': ['hour', 'day_of_week', 'meal_type'],
+            'input_features': ['hour', 'day_of_week', 'meal_type', 'slot_minute'],
             'final_loss': float(history.history['loss'][-1]),
             'final_mae': float(history.history['mae'][-1])
         }
@@ -154,13 +165,13 @@ class MessCrowdRegressor:
         
         return True
     
-    def predict(self, hour, day_of_week, meal_type):
+    def predict(self, hour, day_of_week, meal_type, slot_minute):
         """Predict crowd for given time"""
         if self.model is None:
             return None
         
         # Create feature vector
-        features = np.array([[hour, day_of_week, meal_type]], dtype=np.float32)
+        features = np.array([[hour, day_of_week, meal_type, slot_minute]], dtype=np.float32)
         
         # Scale features
         features_scaled = self.scaler.transform(features)

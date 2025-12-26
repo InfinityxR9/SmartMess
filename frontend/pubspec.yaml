@@ -11,6 +11,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
   cupertino_icons: ^1.0.2
   
   # Firebase
@@ -31,7 +33,7 @@ dependencies:
   http: ^1.1.0
   
   # Intl for timestamp formatting
-  intl: ^0.18.1
+  intl: ^0.20.2
   
   # Loading and UI utilities
   shimmer: ^3.0.0

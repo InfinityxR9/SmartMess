@@ -24,8 +24,6 @@ class ReviewService {
     required String mealType,
     required int rating,
     required String comment,
-    String? studentId,
-    String? studentName,
   }) async {
     try {
       final currentMealType = _getMealType();
@@ -50,8 +48,7 @@ class ReviewService {
           .add({
         'rating': rating,
         'comment': comment,
-        'studentId': studentId,
-        'studentName': studentName ?? 'Anonymous',
+        'studentName': 'Anonymous',
         'submittedAt': now.toIso8601String(),
         'slot': normalizedMealType,
         'date': dateStr,
@@ -84,7 +81,12 @@ class ReviewService {
           .get();
 
       return snapshot.docs
-          .map((doc) => {...doc.data()})
+          .map((doc) {
+            final data = {...doc.data()};
+            data.remove('studentId');
+            data['studentName'] = 'Anonymous';
+            return data;
+          })
           .toList();
           
     } catch (e) {
@@ -125,7 +127,12 @@ class ReviewService {
           .get();
 
       return snapshot.docs
-          .map((doc) => {...doc.data()})
+          .map((doc) {
+            final data = {...doc.data()};
+            data.remove('studentId');
+            data['studentName'] = 'Anonymous';
+            return data;
+          })
           .toList();
     } catch (e) {
       print('[Review] Error getting reviews for $date/$slot: $e');

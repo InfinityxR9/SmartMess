@@ -24,7 +24,62 @@ class PredictionService:
     
     def __init__(self):
         self.models_cache = {}
-    
+
+    def _fallback_predictions(self, current_time, current_count, capacity):
+        """Generate simple fallback predictions when no model is available."""
+        # Determine meal window
+        def meal_type_for(dt):
+            hour = dt.hour
+            minute = dt.minute
+            if 7 < hour < 9 or (hour == 7 and minute >= 30) or (hour == 9 and minute < 30):
+                return 'breakfast'
+            if 12 <= hour < 14 or (hour == 14 and minute == 0):
+                return 'lunch'
+            if 19 < hour < 21 or (hour == 19 and minute >= 30) or (hour == 21 and minute < 30):
+                return 'dinner'
+            return None
+
+        meal_type = meal_type_for(current_time)
+        if meal_type is None:
+            return []
+
+        meal_times = {
+            'breakfast': (7, 30, 9, 30),
+            'lunch': (12, 0, 14, 0),
+            'dinner': (19, 30, 21, 30),
+        }
+
+        start_h, start_m, end_h, end_m = meal_times[meal_type]
+        meal_end_minutes = end_h * 60 + end_m
+
+        predictions = []
+        temp_time = current_time.replace(minute=(current_time.minute // 15) * 15, second=0, microsecond=0)
+
+        baseline = max(current_count, int(capacity * 0.15))
+        growth_step = max(1, int(capacity * 0.04))
+
+        slot_num = 0
+        while temp_time.hour * 60 + temp_time.minute < meal_end_minutes and slot_num < 8:
+            temp_time = temp_time + timedelta(minutes=15)
+            if temp_time.hour * 60 + temp_time.minute >= meal_end_minutes:
+                break
+
+            predicted_count = min(capacity, baseline + (slot_num + 1) * growth_step)
+            crowd_percentage = (predicted_count / capacity) * 100 if capacity else 0
+
+            predictions.append({
+                'time_slot': temp_time.strftime('%I:%M %p'),
+                'time_24h': temp_time.strftime('%H:%M'),
+                'predicted_crowd': int(predicted_count),
+                'capacity': capacity,
+                'crowd_percentage': round(crowd_percentage, 1),
+                'recommendation': 'Avoid' if crowd_percentage > 70 else 'Moderate' if crowd_percentage > 40 else 'Good time',
+                'confidence': 'low'
+            })
+            slot_num += 1
+
+        return predictions
+
     def get_prediction_model(self, mess_id):
         """
         Get or load the prediction model for a specific mess
@@ -48,10 +103,21 @@ class PredictionService:
         model = self.get_prediction_model(mess_id)
         
         if model is None:
+            predictions = self._fallback_predictions(
+                current_time=current_time,
+                current_count=current_count,
+                capacity=capacity
+            )
             return {
-                'error': f'Model not trained for mess: {mess_id}',
-                'mess_id': mess_id,
-                'predictions': []
+                'messId': mess_id,
+                'timestamp': datetime.now().isoformat(),
+                'date': current_time.strftime('%Y-%m-%d'),
+                'mealType': 'none',
+                'current_crowd': current_count,
+                'capacity': capacity,
+                'current_percentage': round((current_count / capacity) * 100, 1) if capacity else 0,
+                'predictions': predictions,
+                'model_info': {'fallback': True, 'reason': 'model_not_available'}
             }
         
         # Generate predictions using mess-specific model
