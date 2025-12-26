@@ -59,11 +59,31 @@ def _disable_firestore_if_needed(error):
     if not FIRESTORE_AVAILABLE:
         return
     message = str(error).lower()
-    if any(token in message for token in ['invalid_grant', 'metadata', 'jwt', 'token must be']):
+    tokens = [
+        'invalid_grant',
+        'access_token_expired',
+        'invalid authentication credentials',
+        'unauthenticated',
+        'permission denied',
+        'token must be',
+        'jwt',
+        'metadata',
+        'oauth',
+        '401',
+    ]
+    if any(token in message for token in tokens):
         FIRESTORE_AVAILABLE = False
         print("[WARN] Firestore disabled due to credential error. Falling back to dummy data.")
 
-def _start_background_training(mess_id, meal_type, days_back, dev_mode, force_train):
+def _start_background_training(
+    mess_id,
+    meal_type,
+    days_back,
+    minutes_back,
+    current_time,
+    dev_mode,
+    force_train,
+):
     key = f"{mess_id}:{meal_type}"
     if key in _TRAINING_IN_PROGRESS:
         return
@@ -76,6 +96,8 @@ def _start_background_training(mess_id, meal_type, days_back, dev_mode, force_tr
                 mess_id=mess_id,
                 meal_type=meal_type,
                 days_back=days_back,
+                minutes_back=minutes_back,
+                current_time=current_time,
                 dev_mode=dev_mode,
                 force_train=force_train,
             )
@@ -142,6 +164,23 @@ def parse_capacity(value):
     except Exception:
         return None
 
+def _parse_marked_at(value):
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value
+    if hasattr(value, 'to_datetime'):
+        try:
+            return value.to_datetime()
+        except Exception:
+            return None
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value.replace('Z', '+00:00'))
+        except Exception:
+            return None
+    return None
+
 def get_slot_window(current_time, meal_type):
     window = MEAL_WINDOWS.get(meal_type)
     if not window:
@@ -204,26 +243,92 @@ def load_attendance_records(mess_id, meal_type, days_back=30):
 
     return records
 
-def train_mess_model(mess_id, meal_type, days_back=30, dev_mode=False, force_train=True):
-    training_info = {'trained': False, 'records': 0, 'usedDummy': False, 'skippedRecent': False}
-    if not force_train or not meal_type:
+def load_recent_attendance_records(mess_id, meal_type, minutes_back=15, current_time=None):
+    """Load attendance records from the last N minutes for today's slot."""
+    if not db or not FIRESTORE_AVAILABLE or not meal_type:
+        return []
+    if minutes_back <= 0:
+        return []
+    now = current_time or datetime.now()
+    window_start = now - timedelta(minutes=minutes_back)
+    date_str = now.strftime('%Y-%m-%d')
+    records = []
+
+    try:
+        students_ref = (
+            db.collection('attendance')
+            .document(mess_id)
+            .collection(date_str)
+            .document(meal_type)
+            .collection('students')
+        )
+        students = students_ref.stream()
+        for student_doc in students:
+            data = student_doc.to_dict() or {}
+            marked_at_raw = data.get('markedAt')
+            marked_at_dt = _parse_marked_at(marked_at_raw)
+            if not marked_at_dt:
+                continue
+            if marked_at_dt.tzinfo is not None:
+                marked_at_dt = marked_at_dt.astimezone(tz=None).replace(tzinfo=None)
+            if marked_at_dt < window_start or marked_at_dt > now:
+                continue
+            records.append({
+                'enrollmentId': data.get('enrollmentId') or student_doc.id,
+                'studentName': data.get('studentName', 'Anonymous'),
+                'markedAt': marked_at_dt.isoformat(),
+                'markedBy': data.get('markedBy', 'unknown'),
+                'messId': mess_id,
+                'meal': meal_type,
+                'date': date_str
+            })
+    except Exception as e:
+        _disable_firestore_if_needed(e)
+
+    return records
+
+def train_mess_model(
+    mess_id,
+    meal_type,
+    days_back=30,
+    minutes_back=None,
+    current_time=None,
+    dev_mode=False,
+    force_train=True,
+):
+    training_info = {
+        'trained': False,
+        'records': 0,
+        'usedDummy': False,
+        'skippedRecent': False,
+    }
+    if not meal_type:
         return training_info
 
     try:
-        if _has_recent_model(mess_id, max_age_minutes=60):
+        if minutes_back is None and not force_train and _has_recent_model(mess_id, max_age_minutes=60):
             training_info['skippedRecent'] = True
             return training_info
 
         attendance_records = []
         if db and FIRESTORE_AVAILABLE:
-            attendance_records = load_attendance_records(
-                mess_id=mess_id,
-                meal_type=meal_type,
-                days_back=days_back
-            )
+            if minutes_back is not None:
+                attendance_records = load_recent_attendance_records(
+                    mess_id=mess_id,
+                    meal_type=meal_type,
+                    minutes_back=minutes_back,
+                    current_time=current_time,
+                )
+                training_info['windowMinutes'] = minutes_back
+            else:
+                attendance_records = load_attendance_records(
+                    mess_id=mess_id,
+                    meal_type=meal_type,
+                    days_back=days_back
+                )
             training_info['records'] = len(attendance_records)
 
-        if not attendance_records and dev_mode:
+        if not attendance_records and dev_mode and minutes_back is None:
             from train_tensorflow import generate_dummy_attendance_data
             attendance_records = generate_dummy_attendance_data(mess_id, days=7)
             training_info['records'] = len(attendance_records)
@@ -252,7 +357,7 @@ def predict():
     Real-time crowd prediction with slot-aware training
     Trains model on recent historical data for the selected slot
     Uses mess-specific TensorFlow models for isolation
-    Expected input: {'messId': 'mess_id', 'devMode': True/False, 'slot': 'breakfast|lunch|dinner'}
+    Expected input: {'messId': 'mess_id', 'devMode': True/False, 'slot': 'breakfast|lunch|dinner', 'minutesBack': 15}
     Returns: Predictions for current and next 15-minute slots
     
     Data Structure: attendance/<messId>/<date>/<meal>/students
@@ -273,6 +378,20 @@ def predict():
             days_back = max(1, int(data.get('daysBack', 30)))
         except Exception:
             days_back = 30
+        try:
+            minutes_back = data.get('minutesBack')
+            minutes_back = int(minutes_back) if minutes_back is not None else None
+            if minutes_back is not None and minutes_back <= 0:
+                minutes_back = None
+        except Exception:
+            minutes_back = None
+        try:
+            minutes_back = data.get('minutesBack')
+            minutes_back = int(minutes_back) if minutes_back is not None else None
+            if minutes_back is not None and minutes_back <= 0:
+                minutes_back = None
+        except Exception:
+            minutes_back = None
         
         if not mess_id:
             return jsonify({'error': 'messId is required'}), 400
@@ -314,20 +433,29 @@ def predict():
 
         date_str = current_time.strftime('%Y-%m-%d')
         
-        # Get current attendance count for the 15-minute slot
+        # Get current attendance count (optionally limited to recent minutes)
         current_count = 0
         
         if db and FIRESTORE_AVAILABLE:
             try:
-                students_ref = (
-                    db.collection('attendance')
-                    .document(mess_id)
-                    .collection(date_str)
-                    .document(meal_type)
-                    .collection('students')
-                )
-                students = students_ref.stream()
-                current_count = sum(1 for _ in students)
+                if minutes_back is not None:
+                    recent_records = load_recent_attendance_records(
+                        mess_id=mess_id,
+                        meal_type=meal_type,
+                        minutes_back=minutes_back,
+                        current_time=current_time,
+                    )
+                    current_count = len(recent_records)
+                else:
+                    students_ref = (
+                        db.collection('attendance')
+                        .document(mess_id)
+                        .collection(date_str)
+                        .document(meal_type)
+                        .collection('students')
+                    )
+                    students = students_ref.stream()
+                    current_count = sum(1 for _ in students)
             except Exception as e:
                 _disable_firestore_if_needed(e)
                 print(f"[WARN] Could not get current attendance: {e}")
@@ -338,13 +466,17 @@ def predict():
         capacity = capacity_override if capacity_override is not None else 100
 
         training_info = {'trained': False, 'records': 0, 'usedDummy': False, 'skippedRecent': False}
-        should_train = auto_train and meal_type and (force_train or not _has_recent_model(mess_id))
+        should_train = auto_train and meal_type and (
+            minutes_back is not None or force_train or not _has_recent_model(mess_id)
+        )
         if should_train:
             if async_train:
                 _start_background_training(
                     mess_id=mess_id,
                     meal_type=meal_type,
                     days_back=days_back,
+                    minutes_back=minutes_back,
+                    current_time=current_time,
                     dev_mode=dev_mode,
                     force_train=force_train,
                 )
@@ -354,6 +486,8 @@ def predict():
                     mess_id=mess_id,
                     meal_type=meal_type,
                     days_back=days_back,
+                    minutes_back=minutes_back,
+                    current_time=current_time,
                     dev_mode=dev_mode,
                     force_train=force_train,
                 )
@@ -402,7 +536,7 @@ def predict():
 def train_model():
     """
     Endpoint to train mess-specific TensorFlow models
-    POST body: {'messId': 'mess_id', 'slot': 'breakfast|lunch|dinner', 'daysBack': 30}
+    POST body: {'messId': 'mess_id', 'slot': 'breakfast|lunch|dinner', 'daysBack': 30, 'minutesBack': 15}
     """
     try:
         data = request.get_json() or {}
@@ -441,11 +575,14 @@ def train_model():
             }), 200
 
         training_info = {'trained': False, 'records': 0}
-        if async_train and (force_train or not _has_recent_model(mess_id)):
+        should_train = minutes_back is not None or force_train or not _has_recent_model(mess_id)
+        if async_train and should_train:
             _start_background_training(
                 mess_id=mess_id,
                 meal_type=meal_type,
                 days_back=days_back,
+                minutes_back=minutes_back,
+                current_time=current_time,
                 dev_mode=dev_mode,
                 force_train=force_train,
             )
@@ -455,6 +592,8 @@ def train_model():
                 mess_id=mess_id,
                 meal_type=meal_type,
                 days_back=days_back,
+                minutes_back=minutes_back,
+                current_time=current_time,
                 dev_mode=dev_mode,
                 force_train=force_train,
             )
@@ -481,8 +620,18 @@ def manager_info():
     try:
         mess_id = request.args.get('messId')
         
-        if not mess_id or not db:
-            return jsonify({'error': 'messId required and database not available'}), 400
+        if not mess_id:
+            return jsonify({'error': 'messId required'}), 400
+
+        if not db or not FIRESTORE_AVAILABLE:
+            return jsonify({
+                'messId': mess_id,
+                'managerName': 'Not Set',
+                'managerEmail': 'Not Set',
+                'messName': mess_id,
+                'capacity': 100,
+                'warning': 'Firestore unavailable'
+            }), 200
         
         try:
             # Get manager info from messes collection
@@ -499,6 +648,7 @@ def manager_info():
             else:
                 return jsonify({'error': 'Mess not found'}), 404
         except Exception as e:
+            _disable_firestore_if_needed(e)
             print(f"[ERROR] Getting manager info: {e}")
             return jsonify({'error': str(e)}), 500
             
@@ -521,7 +671,7 @@ def analytics():
         date_param = request.args.get('date')
         slot_param = request.args.get('slot')
         
-        if not mess_id or not db:
+        if not mess_id:
             return jsonify({'error': 'messId required'}), 400
         
         if slot_param:
@@ -551,6 +701,20 @@ def analytics():
                     'averageRating': 0,
                     'warning': 'Outside meal hours. Provide slot to view analytics.'
                 }), 200
+
+        if not db or not FIRESTORE_AVAILABLE:
+            return jsonify({
+                'messId': mess_id,
+                'date': date_param,
+                'slot': slot_param,
+                'attendance': [],
+                'totalAttendance': 0,
+                'crowdPercentage': 0,
+                'reviews': [],
+                'reviewCount': 0,
+                'averageRating': 0,
+                'warning': 'Firestore unavailable'
+            }), 200
         
         try:
             # Get mess capacity
@@ -606,6 +770,7 @@ def analytics():
             }), 200
             
         except Exception as e:
+            _disable_firestore_if_needed(e)
             print(f"[WARN] Getting analytics: {e}")
             return jsonify({
                 'messId': mess_id,
@@ -643,8 +808,19 @@ def reviews():
             if not slot_param:
                 return jsonify({'error': 'Invalid slot. Use breakfast, lunch, or dinner.'}), 400
         
-        if not mess_id or not db:
+        if not mess_id:
             return jsonify({'error': 'messId required'}), 400
+
+        if not db or not FIRESTORE_AVAILABLE:
+            if request.method == 'POST':
+                return jsonify({'error': 'Firestore unavailable'}), 503
+            return jsonify({
+                'messId': mess_id,
+                'slot': slot_param or '',
+                'date': date_param or datetime.now().strftime('%Y-%m-%d'),
+                'reviews': [],
+                'warning': 'Firestore unavailable'
+            }), 200
         
         if request.method == 'POST':
             # Submit a review for current meal slot
@@ -684,6 +860,7 @@ def reviews():
                     'date': date_str
                 }), 201
             except Exception as e:
+                _disable_firestore_if_needed(e)
                 print(f"[ERROR] Submitting review: {e}")
                 return jsonify({'error': f'Database error: {str(e)}'}), 500
         
@@ -727,6 +904,7 @@ def reviews():
                     'count': len(reviews_list)
                 }), 200
             except Exception as e:
+                _disable_firestore_if_needed(e)
                 print(f"[WARN] Getting reviews: {e}")
                 return jsonify({
                     'messId': mess_id,
@@ -756,8 +934,18 @@ def get_attendance():
         date_param = request.args.get('date')
         slot_param = request.args.get('slot')
         
-        if not mess_id or not date_param or not slot_param or not db:
+        if not mess_id or not date_param or not slot_param:
             return jsonify({'error': 'messId, date, and slot required'}), 400
+
+        if not db or not FIRESTORE_AVAILABLE:
+            return jsonify({
+                'messId': mess_id,
+                'date': date_param,
+                'slot': slot_param,
+                'attendance': [],
+                'count': 0,
+                'warning': 'Firestore unavailable'
+            }), 200
         
         attendance_list = []
         try:
@@ -776,6 +964,7 @@ def get_attendance():
                 'count': len(attendance_list)
             }), 200
         except Exception as e:
+            _disable_firestore_if_needed(e)
             print(f"[WARN] Getting attendance: {e}")
             return jsonify({
                 'messId': mess_id,

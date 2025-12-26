@@ -14,6 +14,7 @@ class PredictionService {
     bool autoTrain = true,
     bool asyncTrain = true,
     int daysBack = 30,
+    int? minutesBack,
     int? capacity,
   }) async {
     try {
@@ -29,6 +30,9 @@ class PredictionService {
         'asyncTrain': asyncTrain,
         'daysBack': daysBack,
       };
+      if (minutesBack != null && minutesBack > 0) {
+        payload['minutesBack'] = minutesBack;
+      }
       if (capacity != null && capacity > 0) {
         payload['capacity'] = capacity;
       }
@@ -55,6 +59,7 @@ class PredictionService {
     String messId, {
     String? slot,
     int daysBack = 30,
+    int? minutesBack,
     int? capacity,
     bool asyncTrain = true,
     bool forceTrain = false,
@@ -71,6 +76,9 @@ class PredictionService {
         'devMode': true,
         'asyncTrain': asyncTrain,
       };
+      if (minutesBack != null && minutesBack > 0) {
+        payload['minutesBack'] = minutesBack;
+      }
       if (capacity != null && capacity > 0) {
         payload['capacity'] = capacity;
       }

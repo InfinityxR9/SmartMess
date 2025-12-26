@@ -88,11 +88,17 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
       _messId,
       slot: slotType,
       capacity: _messCapacity,
+      minutesBack: 15,
+      asyncTrain: false,
+      forceTrain: true,
     );
     return _predictionService.getPrediction(
       _messId,
       slot: slotType,
       capacity: _messCapacity,
+      minutesBack: 15,
+      autoTrain: false,
+      asyncTrain: false,
     );
   }
 

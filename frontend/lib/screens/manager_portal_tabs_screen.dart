@@ -269,11 +269,17 @@ class _ManagerPredictionTabState extends State<ManagerPredictionTab> {
       widget.messId,
       slot: slotType,
       capacity: _messCapacity,
+      minutesBack: 15,
+      asyncTrain: false,
+      forceTrain: true,
     );
     return _predictionService.getPrediction(
       widget.messId,
       slot: slotType,
       capacity: _messCapacity,
+      minutesBack: 15,
+      autoTrain: false,
+      asyncTrain: false,
     );
   }
 
@@ -466,11 +472,17 @@ class _ManagerAttendanceTabState extends State<ManagerAttendanceTab> {
       widget.messId,
       slot: slotType,
       capacity: _messCapacity,
+      minutesBack: 15,
+      asyncTrain: false,
+      forceTrain: true,
     );
     return _predictionService.getPrediction(
       widget.messId,
       slot: slotType,
       capacity: _messCapacity,
+      minutesBack: 15,
+      autoTrain: false,
+      asyncTrain: false,
     );
   }
 

@@ -41,11 +41,17 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       widget.messId,
       slot: slot,
       capacity: _messCapacity,
+      minutesBack: 15,
+      asyncTrain: false,
+      forceTrain: true,
     );
     return _predictionService.getPrediction(
       widget.messId,
       slot: slot,
       capacity: _messCapacity,
+      minutesBack: 15,
+      autoTrain: false,
+      asyncTrain: false,
     );
   }
 

@@ -31,11 +31,17 @@ class _PredictionScreenState extends State<PredictionScreen> {
       messId,
       slot: slot,
       capacity: _messCapacity,
+      minutesBack: 15,
+      asyncTrain: false,
+      forceTrain: true,
     );
     return _predictionService.getPrediction(
       messId,
       slot: slot,
       capacity: _messCapacity,
+      minutesBack: 15,
+      autoTrain: false,
+      asyncTrain: false,
     );
   }
 

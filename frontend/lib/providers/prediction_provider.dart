@@ -29,11 +29,17 @@ class PredictionProvider extends ChangeNotifier {
           messId,
           slot: slot,
           capacity: capacity,
+          minutesBack: 15,
+          asyncTrain: false,
+          forceTrain: true,
         );
         _prediction = await _predictionService.getPrediction(
           messId,
           slot: slot,
           capacity: capacity,
+          minutesBack: 15,
+          autoTrain: false,
+          asyncTrain: false,
         );
       }
       _isLoading = false;
