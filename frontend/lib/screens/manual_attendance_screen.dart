@@ -58,7 +58,7 @@ class _ManualAttendanceScreenState extends State<ManualAttendanceScreen> {
         setState(() {
           _message = success
               ? 'Success: ${_nameController.text} marked present'
-              : 'Already marked for this meal: ${_nameController.text}';
+              : 'Duplicate Attendance is not Allowed';
           _isSuccess = success;
           _isLoading = false;
         });

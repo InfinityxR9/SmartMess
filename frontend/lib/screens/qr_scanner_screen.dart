@@ -149,13 +149,14 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
 
         final alreadyMarked = await _attendanceService.isAlreadyMarked(
           messId,
-          authProvider.userId ?? '',
           slot.type,
+          enrollmentId: authProvider.enrollmentId,
+          studentId: authProvider.userId,
         );
 
         if (alreadyMarked) {
           setState(() {
-            _message = 'Already marked for ${mealType.toUpperCase()} today!';
+            _message = 'Duplicate Attendance is not Allowed';
             _isSuccess = false;
             _isProcessing = false;
           });

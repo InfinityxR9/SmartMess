@@ -20,34 +20,38 @@ class AttendanceService {
     try {
       final today = DateTime.now();
       final dateStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
-      final normalizedStudentId = studentId.trim().isNotEmpty ? studentId : uuid.v4();
+      final normalizedStudentId = _normalizeStudentId(studentId);
       final normalizedEnrollmentId = _normalizeEnrollmentId(enrollmentId);
       final normalizedStudentName = _normalizeStudentName(studentName);
+      final anonymousId = _anonymousEnrollmentId();
+      final storedEnrollmentId =
+          normalizedEnrollmentId.isNotEmpty ? normalizedEnrollmentId : anonymousId;
+      final attendanceDocId = normalizedEnrollmentId.isNotEmpty
+          ? normalizedEnrollmentId
+          : (normalizedStudentId.isNotEmpty ? normalizedStudentId : anonymousId);
 
-      // Check if already marked
-      final attendanceDoc = await _firestore
+      final studentsRef = _firestore
           .collection('attendance')
           .doc(messId)
           .collection(dateStr)
           .doc(mealType)
-          .collection('students')
-          .doc(normalizedStudentId)
-          .get();
+          .collection('students');
 
-      if (attendanceDoc.exists) {
+      // Check if already marked (case-insensitive enrollment ID)
+      final duplicate = await _hasDuplicateAttendance(
+        studentsRef: studentsRef,
+        normalizedEnrollmentId: normalizedEnrollmentId,
+        rawEnrollmentId: enrollmentId,
+        normalizedStudentId: normalizedStudentId,
+      );
+
+      if (duplicate) {
         return false;
       }
 
       // Mark attendance
-      await _firestore
-          .collection('attendance')
-          .doc(messId)
-          .collection(dateStr)
-          .doc(mealType)
-          .collection('students')
-          .doc(normalizedStudentId)
-          .set({
-        'enrollmentId': normalizedEnrollmentId,
+      await studentsRef.doc(attendanceDocId).set({
+        'enrollmentId': storedEnrollmentId,
         'studentName': normalizedStudentName,
         'markedAt': DateTime.now().toIso8601String(),
         'markedBy': 'scanned',
@@ -65,23 +69,34 @@ class AttendanceService {
   /// Check if student already marked for this meal today
   Future<bool> isAlreadyMarked(
     String messId,
-    String studentId,
-    String mealType,
-  ) async {
+    String mealType, {
+    String? enrollmentId,
+    String? studentId,
+  }) async {
     try {
       final today = DateTime.now();
       final dateStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
 
-      final doc = await _firestore
+      final normalizedStudentId = _normalizeStudentId(studentId ?? '');
+      final normalizedEnrollmentId = _normalizeEnrollmentId(enrollmentId);
+
+      if (normalizedEnrollmentId.isEmpty && normalizedStudentId.isEmpty) {
+        return false;
+      }
+
+      final studentsRef = _firestore
           .collection('attendance')
           .doc(messId)
           .collection(dateStr)
           .doc(mealType)
-          .collection('students')
-          .doc(studentId)
-          .get();
+          .collection('students');
 
-      return doc.exists;
+      return _hasDuplicateAttendance(
+        studentsRef: studentsRef,
+        normalizedEnrollmentId: normalizedEnrollmentId,
+        rawEnrollmentId: enrollmentId,
+        normalizedStudentId: normalizedStudentId,
+      );
     } catch (e) {
       return false;
     }
@@ -176,34 +191,38 @@ class AttendanceService {
     try {
       final today = DateTime.now();
       final dateStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
-      final normalizedStudentId = studentId.trim().isNotEmpty ? studentId : uuid.v4();
+      final normalizedStudentId = _normalizeStudentId(studentId);
       final normalizedEnrollmentId = _normalizeEnrollmentId(enrollmentId);
       final normalizedStudentName = _normalizeStudentName(studentName);
+      final anonymousId = _anonymousEnrollmentId();
+      final storedEnrollmentId =
+          normalizedEnrollmentId.isNotEmpty ? normalizedEnrollmentId : anonymousId;
+      final attendanceDocId = normalizedEnrollmentId.isNotEmpty
+          ? normalizedEnrollmentId
+          : (normalizedStudentId.isNotEmpty ? normalizedStudentId : anonymousId);
 
-      // Check if already marked
-      final attendanceDoc = await _firestore
+      final studentsRef = _firestore
           .collection('attendance')
           .doc(messId)
           .collection(dateStr)
           .doc(mealType)
-          .collection('students')
-          .doc(normalizedStudentId)
-          .get();
+          .collection('students');
 
-      if (attendanceDoc.exists) {
+      // Check if already marked (case-insensitive enrollment ID)
+      final duplicate = await _hasDuplicateAttendance(
+        studentsRef: studentsRef,
+        normalizedEnrollmentId: normalizedEnrollmentId,
+        rawEnrollmentId: enrollmentId,
+        normalizedStudentId: normalizedStudentId,
+      );
+
+      if (duplicate) {
         return false;
       }
 
       // Mark attendance
-      await _firestore
-          .collection('attendance')
-          .doc(messId)
-          .collection(dateStr)
-          .doc(mealType)
-          .collection('students')
-          .doc(normalizedStudentId)
-          .set({
-        'enrollmentId': normalizedEnrollmentId,
+      await studentsRef.doc(attendanceDocId).set({
+        'enrollmentId': storedEnrollmentId,
         'studentName': normalizedStudentName,
         'markedAt': DateTime.now().toIso8601String(),
         'markedBy': 'manual',
@@ -273,8 +292,46 @@ class AttendanceService {
   }
 
   String _normalizeEnrollmentId(String? enrollmentId) {
-    final trimmed = enrollmentId?.trim() ?? '';
-    return trimmed.isNotEmpty ? trimmed : 'ANON-${uuid.v4()}';
+    final trimmed = enrollmentId?.trim().toLowerCase() ?? '';
+    return trimmed;
+  }
+
+  String _normalizeStudentId(String studentId) {
+    final trimmed = studentId.trim().toLowerCase();
+    return trimmed;
+  }
+
+  String _anonymousEnrollmentId() {
+    return 'anon-${uuid.v4()}';
+  }
+
+  Future<bool> _hasDuplicateAttendance({
+    required CollectionReference<Map<String, dynamic>> studentsRef,
+    required String normalizedEnrollmentId,
+    required String? rawEnrollmentId,
+    required String normalizedStudentId,
+  }) async {
+    final idsToCheck = <String>{};
+    if (normalizedEnrollmentId.isNotEmpty) {
+      idsToCheck.add(normalizedEnrollmentId);
+    }
+    final raw = rawEnrollmentId?.trim() ?? '';
+    if (raw.isNotEmpty) {
+      idsToCheck.add(raw);
+      idsToCheck.add(raw.toUpperCase());
+      idsToCheck.add(raw.toLowerCase());
+    }
+    if (normalizedEnrollmentId.isEmpty && normalizedStudentId.isNotEmpty) {
+      idsToCheck.add(normalizedStudentId);
+    }
+
+    for (final id in idsToCheck) {
+      final doc = await studentsRef.doc(id).get();
+      if (doc.exists) {
+        return true;
+      }
+    }
+    return false;
   }
 
   String _normalizeStudentName(String? studentName) {
