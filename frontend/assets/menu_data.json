@@ -1,0 +1,215 @@
+{
+  "note": "Beet-root, Onion(Compulsory), Carrot, Tomato, Cucumber (At Least 2). Dahi should be served on plates.",
+  "days": {
+    "Monday": {
+      "Breakfast": [
+        "Aloo onion paratha",
+        "Chutney",
+        "Curd",
+        "Milk(200 ml)",
+        "Bread (4 slices)",
+        "Butter&Jam",
+        "Cornflakes/Coffee Powder/ Tea bags/ Bournvita",
+        "Sprouts(Black Chana+ Moong)"
+      ],
+      "Lunch": [
+        "Rajma",
+        "Cabbage-Matar",
+        "Jeera Rice",
+        "Roti",
+        "Curd",
+        "Green Salad",
+        "Lemon + Pickle"
+      ],
+      "Dinner": [
+        "Sarson Ka Saag",
+        "Dal Tadka",
+        "Rice Kheer",
+        "Roti",
+        "Rice",
+        "Green Salad",
+        "Lemon + Pickle"
+      ]
+    },
+    "Tuesday": {
+      "Breakfast": [
+        "Poori Chana",
+        "Halwa",
+        "Daliya/Milk (200 ml)",
+        "Bread (4 slices)",
+        "Butter&Jam",
+        "Coffee Powder/ Tea bags/Bournvita",
+        "Sprouts(Black Chana+ Moong)"
+      ],
+      "Lunch": [
+        "Mix Dal",
+        "Veg Kofta",
+        "Roti",
+        "Rice",
+        "Green Salad",
+        "Lemon + Pickle"
+      ],
+      "Dinner": [
+        "Lauki Chana",
+        "Dal Makhni",
+        "Motichur Laddu",
+        "Roti",
+        "Rice",
+        "Green Salad",
+        "Lemon + Pickle"
+      ]
+    },
+    "Wednesday": {
+      "Breakfast": [
+        "Mix Paratha",
+        "Dhaniya Chutney",
+        "Curd",
+        "Fruits/ 2 Eggs",
+        "Milk (200 ml)",
+        "Bread (4 slices)",
+        "Butter&Jam",
+        "Cornflakes/Coffee Powder/ Tea bags/Bournvita",
+        "Sprouts(Black Chana+ Moong)"
+      ],
+      "Lunch": [
+        "Kadhi Pakora",
+        "Aloo Zeera",
+        "Masala Papad/ Fryums",
+        "Roti",
+        "Jeera Rice",
+        "Green Salad",
+        "Lemon + Pickle"
+      ],
+      "Dinner": [
+        "Paneer Do Pyaza/ ChickenCurry",
+        "Dal Fry",
+        "Sooji Ka Halwa",
+        "Roti",
+        "Rice",
+        "Green Salad",
+        "Lemon + Pickle"
+      ]
+    },
+    "Thursday": {
+      "Breakfast": [
+        "Idli",
+        "Sambhar & chutney",
+        "Fruits/ 2 Eggs",
+        "Daliya/Milk (200 ml)",
+        "Bread (4 slices)",
+        "Butter&Jam",
+        "Coffee Powder/ Tea bags/Bournvita",
+        "Sprouts(Black Chana+ Moong)"
+      ],
+      "Lunch": [
+        "Sitafal",
+        "White Chole",
+        "Poori",
+        "Massala Chaach",
+        "Rice",
+        "Green Salad",
+        "Lemon + Pickle"
+      ],
+      "Dinner": [
+        "Mix Veg (gajar+paneer or Mushroom+bean +gobi+matar)",
+        "Black Masoor dal",
+        "Gulab Jamun / White Rassgulla",
+        "Roti",
+        "Rice",
+        "Green Salad",
+        "Lemon + Pickle"
+      ]
+    },
+    "Friday": {
+      "Breakfast": [
+        "Uttapam",
+        "Sambhar",
+        "Chutney",
+        "Fruits/ 2 Omlette",
+        "Daliya/Milk (200 ml)",
+        "Bread (4 slices)",
+        "Butter&Jam",
+        "Coffee Powder/ Tea bags/Bournvita",
+        "Sprouts(Black Chana+ Moong)"
+      ],
+      "Lunch": [
+        "Aloo Gazar Gobhi",
+        "Moong Masoor Dal",
+        "Rice",
+        "Roti",
+        "Bundi Raita",
+        "Green Salad",
+        "Lemon + Pickle"
+      ],
+      "Dinner": [
+        "Palak Paneer/Egg Curry",
+        "Roongi Dal",
+        "Balushaai",
+        "Roti",
+        "Rice",
+        "Green Salad",
+        "Lemon + Pickle"
+      ]
+    },
+    "Saturday": {
+      "Breakfast": [
+        "Methi/Palak paratha",
+        "Aloo Tamatar Sabji",
+        "2 Banana/ 2 Eggs",
+        "Milk (200 ml)",
+        "Bread (4 slices)",
+        "Butter&Jam",
+        "CornflakesCoffee Powder/ Tea bags/Bournvita",
+        "Sprouts(Black Chana+ Moong)"
+      ],
+      "Lunch": [
+        "Dry Paneer Bhurji, Egg Bhurji",
+        "Chana Dal",
+        "Roti",
+        "Rice",
+        "Green Salad",
+        "Lemon + Pickle"
+      ],
+      "Dinner": [
+        "Aloo Matar",
+        "Arher Dal",
+        "Garam Sewayi",
+        "Roti",
+        "Rice",
+        "Green Salad",
+        "Lemon + Pickle"
+      ]
+    },
+    "Sunday": {
+      "Breakfast": [
+        "Masala Onion Dosa",
+        "Sambhar",
+        "Coconut Chutney",
+        "Daliya/Milk (200 ml)",
+        "Bread (4 slices)",
+        "Butter&Jam",
+        "Cornflakes/Coffee Powder/ Tea bags/Bournvita",
+        "Sprouts(Black Chana+ Moong)"
+      ],
+      "Lunch": [
+        "Bhature",
+        "Chole",
+        "Green Chutney",
+        "Fried Masala",
+        "KChhicilhlidi",
+        "Butter Milk",
+        "Salad",
+        "Lemon + Pickle"
+      ],
+      "Dinner": [
+        "Paneer Biryani/ Chicken Biryani",
+        "Aloo soyabean",
+        "Veg- Raita",
+        "Ice-Cream / Gajar Ka Halwa",
+        "Roti",
+        "Green Salad",
+        "Lemon + Pickle"
+      ]
+    }
+  }
+}

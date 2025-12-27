@@ -1,0 +1,10 @@
+.venv
+.vscode
+frontend/node_modules
+__pycache__
+*.pyc
+.git
+.gitignore
+docs
+*.pdf
+*.pptx

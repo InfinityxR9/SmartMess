@@ -1,6 +1,7 @@
 [NOT FOR DAKSH RATHI]
 Prediction API URL in frontend/lib/services/prediction_service.dart
 Cloud Run Endpoint after deployment
+SECRET_KEY=your-secret-key-here in .env.example
 
 Should Create
 backend/.env (from .env.example)
@@ -65,3 +66,26 @@ python -m http.server 8888
 
 Direct run: (debug)
 flutter run -d edge
+
+[MORE INTEGRATIONS and PROBLEMS]
+
+Add a proper "How to completely run project" in readme. that includes donwloading sdk, python.. etc, and installing dependencies, by means of creating venvs, etc..
+
+[PROBLEMS, FIX ALL OF THEM]
+
+- In managers section, the submitted feedback is not visible, additionally for students, make sure, during the specific slot timings, students can only submit review for that slot only and it is visible on the manager side only that slot data (breakfast, lunch, dinner), review is stored in database as reviews/<messId>/<date>/<slot>/items/<Id>, fetch the specific data for date and slot accordingly.
+
+- Attendance marked is not visible in the analytics section of manager, and make sure the visible attendance count is only for that day and that slot. in database, attendance is stored as: attendance/<messId>/<date>/<slot as dinner/breakfast/lunch>/students/<ID>, which has data, as {  enrollmentId: enrollmentId for students if given, otherwise random anonymous id,
+    markedAt: time, markedBy: manual/scanned, studentName: if given, otherwise anonymous}
+
+- In the students section, merge the analytics and prediction section.. the prediction service is not working, make sure on each visit of page, the model trains for the past data (that slot)
+
+- Review system not working, even when submitting within slot hours, this error is generated:
+[Review] Backend error: {"error":"Timeout of 60.0s exceeded, last exception: 503 Getting metadata from plugin failed with error: ('invalid_grant: Invalid JWT: Token must be a short-lived token (60 minutes) and in a reasonable timeframe. Check your iat and exp values in the JWT claim.', {'error': 'invalid_grant', 'error_description': 'Invalid JWT: Token must be a short-lived token (60 minutes) and in a reasonable timeframe. Check your iat and exp values in the JWT claim.'})"}
+
+MAKE SURE THE REVIEW SYSTEM IS WORKING COMPLETELY FINE and MAKE SURE YOU CAN'T SUBMIT THE LUNCH REVIEW IN BREAKFAST TIMINGS OR DINNER TIMINGS (MAKE SURE TIMING ISOLATION IS THERE)
+Additionally, the predictions are also not working.. You've made things worse, fix them ASAP
+
+- You can see the attendance in the show qr section, but make sure the attendance shown is of the same slot and same date, See, we need to show the attendance at three locations, at the QR code (Show attendance), only those marked by that QR code, second, at the analytics sections of the manager and third, the analytics and prediction section (Merged) of the student portal
+
+- All the analytics shown at the managers side should be visible to the students also, to enhance transparency.
