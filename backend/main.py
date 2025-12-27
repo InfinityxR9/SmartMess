@@ -15,51 +15,45 @@ from prediction_model_tf import PredictionService
 
 app = Flask(__name__)
 
-def _load_allowed_origins():
-    raw = os.environ.get('CORS_ORIGINS', '').strip()
+def get_allowed_origins():
+    """
+    Priority:
+    1. CORS_ORIGINS env var (production)
+    2. Localhost defaults (development)
+    """
+
+    raw = os.environ.get("CORS_ORIGINS")
+
     if raw:
-        if raw == '*':
-            return ['*'], True
-        origins = []
-        for item in raw.split(','):
-            origin = item.strip().rstrip('/')
-            if origin:
-                origins.append(origin)
-        return origins, False
+        raw = raw.strip()
+        if raw == "*":
+            return "*"
+
+        return [
+            origin.strip().rstrip("/")
+            for origin in raw.split(",")
+            if origin.strip()
+        ]
+
+    # Local development fallback
     return [
-        'http://localhost:8080',
-        'http://127.0.0.1:8080',
-        'http://localhost:3000',
-        'http://127.0.0.1:3000',
-        'http://localhost:5173',
-        'http://127.0.0.1:5173',
-        'http://localhost:4200',
-        'http://127.0.0.1:4200',
-    ], False
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:4200",
+        "http://127.0.0.1:4200",
+    ]
 
-_ALLOWED_ORIGINS, _ALLOW_ALL_ORIGINS = _load_allowed_origins()
 
-def _is_origin_allowed(origin):
-    if _ALLOW_ALL_ORIGINS or not origin:
-        return True
-    normalized = origin.rstrip('/')
-    return normalized in _ALLOWED_ORIGINS
-
-# Configure CORS for allowed origins only
-cors_origins = '*' if _ALLOW_ALL_ORIGINS else _ALLOWED_ORIGINS
-CORS(app, resources={
-    r"/*": {
-        "origins": cors_origins,
-        "methods": ["GET", "POST", "OPTIONS", "DELETE", "PUT"],
-        "allow_headers": ["Content-Type", "Authorization"]
-    }
-})
-
-@app.before_request
-def enforce_origin_allowlist():
-    origin = request.headers.get('Origin')
-    if origin and not _is_origin_allowed(origin):
-        return jsonify({'error': 'Origin not allowed'}), 403
+CORS(
+    app,
+    resources={r"/*": {"origins": get_allowed_origins()}},
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
+)
 
 def _resolve_firebase_credentials_path():
     candidates = []

@@ -176,7 +176,6 @@ lcov.info
 .nyc_output/
 
 ### Docker ###
-.dockerignore
 Dockerfile.prod
 
 ### IDE-specific files ###
