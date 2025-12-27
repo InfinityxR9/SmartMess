@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_mess/providers/mess_provider.dart';
 import 'package:smart_mess/screens/crowd_dashboard_screen.dart';
+import 'package:smart_mess/theme/app_tokens.dart';
 
 class MessSelectionScreen extends StatefulWidget {
   const MessSelectionScreen({Key? key}) : super(key: key);
@@ -34,13 +35,13 @@ class _MessSelectionScreenState extends State<MessSelectionScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.error_outline, size: 64, color: Color(0xFFE63946)),
+                  const Icon(Icons.error_outline, size: 64, color: AppColors.danger),
                   SizedBox(height: 16),
                   Text('Error Loading Messes'),
                   SizedBox(height: 8),
                   Text(messProvider.error!,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: Color(0xFFE63946), fontSize: 12)),
+                      style: const TextStyle(color: AppColors.danger, fontSize: 12)),
                   SizedBox(height: 24),
                   ElevatedButton(
                     onPressed: () {
@@ -62,7 +63,7 @@ class _MessSelectionScreenState extends State<MessSelectionScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.restaurant_menu, size: 64, color: Colors.grey),
+                  Icon(Icons.restaurant_menu, size: 64, color: AppColors.inkMuted),
                   SizedBox(height: 16),
                   Text('No messes available'),
                   SizedBox(height: 8),
@@ -87,7 +88,7 @@ class _MessSelectionScreenState extends State<MessSelectionScreen> {
               return Card(
                 margin: EdgeInsets.only(bottom: 12),
                 child: ListTile(
-                  leading: Icon(Icons.location_on, color: Color(0xFF0B3954)),
+                  leading: Icon(Icons.location_on, color: AppColors.primary),
                   title: Text(
                     mess.name,
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),

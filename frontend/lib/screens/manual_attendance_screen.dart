@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_mess/providers/unified_auth_provider.dart';
 import 'package:smart_mess/services/attendance_service.dart';
+import 'package:smart_mess/theme/app_tokens.dart';
 
 class ManualAttendanceScreen extends StatefulWidget {
   final String mealType;
@@ -158,7 +159,7 @@ class _ManualAttendanceScreenState extends State<ManualAttendanceScreen> {
                         'Use this for students who cannot scan QR codes.',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.grey[600],
+                          color: AppColors.inkMuted,
                         ),
                       ),
                     ],
@@ -211,7 +212,8 @@ class _ManualAttendanceScreenState extends State<ManualAttendanceScreen> {
                                 onPressed: _isLoading ? null : _markSingleStudent,
                                 style: ElevatedButton.styleFrom(
                                   padding: EdgeInsets.symmetric(vertical: 12),
-                                  backgroundColor: Color(0xFF4CAF50),
+                                  backgroundColor: AppColors.success,
+                                  foregroundColor: Colors.white,
                                 ),
                               ),
                             ],
@@ -266,14 +268,14 @@ class _ManualAttendanceScreenState extends State<ManualAttendanceScreen> {
                               Container(
                                 padding: EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF17BEBB).withValues(alpha: 0.12),
+                                  color: AppColors.accent.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
                                   'This will mark $_studentCount anonymous students as present',
                                   style: TextStyle(
                                     fontSize: 14,
-                                    color: const Color(0xFF0B3954),
+                                    color: AppColors.primary,
                                   ),
                                 ),
                               ),
@@ -284,7 +286,8 @@ class _ManualAttendanceScreenState extends State<ManualAttendanceScreen> {
                                 onPressed: _isLoading ? null : _markBulkStudents,
                                 style: ElevatedButton.styleFrom(
                                   padding: EdgeInsets.symmetric(vertical: 12),
-                                  backgroundColor: Color(0xFF2196F3),
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: Colors.white,
                                 ),
                               ),
                             ],
@@ -303,13 +306,13 @@ class _ManualAttendanceScreenState extends State<ManualAttendanceScreen> {
                   padding: EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: _isSuccess
-                        ? const Color(0xFF2A9D8F).withValues(alpha: 0.12)
-                        : const Color(0xFFE63946).withValues(alpha: 0.12),
+                        ? AppColors.success.withValues(alpha: 0.12)
+                        : AppColors.danger.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: _isSuccess
-                          ? const Color(0xFF2A9D8F).withValues(alpha: 0.35)
-                          : const Color(0xFFE63946).withValues(alpha: 0.35),
+                          ? AppColors.success.withValues(alpha: 0.35)
+                          : AppColors.danger.withValues(alpha: 0.35),
                     ),
                   ),
                   child: Row(
@@ -317,8 +320,8 @@ class _ManualAttendanceScreenState extends State<ManualAttendanceScreen> {
                       Icon(
                         _isSuccess ? Icons.check_circle : Icons.error_outline,
                         color: _isSuccess
-                            ? const Color(0xFF2A9D8F)
-                            : const Color(0xFFE63946),
+                            ? AppColors.success
+                            : AppColors.danger,
                       ),
                       SizedBox(width: 12),
                       Expanded(
@@ -326,8 +329,8 @@ class _ManualAttendanceScreenState extends State<ManualAttendanceScreen> {
                           _message!,
                           style: TextStyle(
                             color: _isSuccess
-                                ? const Color(0xFF1B6F64)
-                                : const Color(0xFF9B1C1F),
+                                ? AppColors.success
+                                : AppColors.danger,
                             fontSize: 14,
                           ),
                         ),

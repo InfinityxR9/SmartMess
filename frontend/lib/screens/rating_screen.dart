@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_mess/providers/unified_auth_provider.dart';
 import 'package:smart_mess/services/review_service.dart';
+import 'package:smart_mess/theme/app_tokens.dart';
 
 class RatingScreen extends StatefulWidget {
   const RatingScreen({Key? key}) : super(key: key);
@@ -130,7 +131,6 @@ class _RatingScreenState extends State<RatingScreen> {
       appBar: AppBar(
         title: const Text('Share Your Feedback'),
         elevation: 0,
-        backgroundColor: const Color(0xFF0B3954),
       ),
       body: SingleChildScrollView(
         child: Container(
@@ -139,10 +139,9 @@ class _RatingScreenState extends State<RatingScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Card(
-                elevation: 2,
                 color: canSubmit
-                    ? const Color(0xFF2A9D8F).withValues(alpha: 0.12)
-                    : const Color(0xFFF4A261).withValues(alpha: 0.15),
+                    ? AppColors.success.withValues(alpha: 0.12)
+                    : AppColors.warning.withValues(alpha: 0.15),
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   child: Column(
@@ -151,8 +150,8 @@ class _RatingScreenState extends State<RatingScreen> {
                         canSubmit ? Icons.check_circle : Icons.access_time,
                         size: 48,
                         color: canSubmit
-                            ? const Color(0xFF2A9D8F)
-                            : const Color(0xFFF4A261),
+                            ? AppColors.success
+                            : AppColors.warning,
                       ),
                       const SizedBox(height: 12),
                       Text(
@@ -162,8 +161,8 @@ class _RatingScreenState extends State<RatingScreen> {
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                           color: canSubmit
-                              ? const Color(0xFF2A9D8F)
-                              : const Color(0xFFF4A261),
+                              ? AppColors.success
+                              : AppColors.warning,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -174,7 +173,7 @@ class _RatingScreenState extends State<RatingScreen> {
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.grey[600],
+                          color: AppColors.inkMuted,
                         ),
                       ),
                     ],
@@ -209,8 +208,8 @@ class _RatingScreenState extends State<RatingScreen> {
                               Icons.star,
                               size: 40,
                               color: index < _rating.toInt()
-                                  ? const Color(0xFFFFB703)
-                                  : Colors.grey[300],
+                                  ? AppColors.secondary
+                                  : AppColors.outlineSubtle,
                             ),
                           );
                         }),
@@ -253,7 +252,7 @@ class _RatingScreenState extends State<RatingScreen> {
                           ),
                           disabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey[300]!),
+                            borderSide: BorderSide(color: AppColors.outlineSubtle),
                           ),
                         ),
                       ),
@@ -267,12 +266,12 @@ class _RatingScreenState extends State<RatingScreen> {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: _isSuccess
-                        ? const Color(0xFF2A9D8F).withValues(alpha: 0.12)
-                        : const Color(0xFFE63946).withValues(alpha: 0.12),
+                        ? AppColors.success.withValues(alpha: 0.12)
+                        : AppColors.danger.withValues(alpha: 0.12),
                     border: Border.all(
                       color: _isSuccess
-                          ? const Color(0xFF2A9D8F)
-                          : const Color(0xFFE63946),
+                          ? AppColors.success
+                          : AppColors.danger,
                     ),
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -280,8 +279,8 @@ class _RatingScreenState extends State<RatingScreen> {
                     _message!,
                     style: TextStyle(
                       color: _isSuccess
-                          ? const Color(0xFF2A9D8F)
-                          : const Color(0xFFE63946),
+                          ? AppColors.success
+                          : AppColors.danger,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -292,8 +291,10 @@ class _RatingScreenState extends State<RatingScreen> {
                 child: ElevatedButton(
                   onPressed: canSubmit && !_isSubmitting ? _submitReview : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0B3954),
-                    disabledBackgroundColor: Colors.grey[300],
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: AppColors.outlineSubtle,
+                    disabledForegroundColor: AppColors.inkMuted,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                   child: _isSubmitting

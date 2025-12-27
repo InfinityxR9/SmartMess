@@ -107,6 +107,8 @@ class SmartMessApp extends StatelessWidget {
           fontFamily: 'SpaceGrotesk',
           textTheme: textTheme,
           scaffoldBackgroundColor: Colors.transparent,
+          disabledColor: AppColors.inkMuted.withValues(alpha: 0.6),
+          hintColor: AppColors.inkMuted,
           appBarTheme: AppBarTheme(
             backgroundColor: colorScheme.primary,
             foregroundColor: Colors.white,
@@ -158,6 +160,8 @@ class SmartMessApp extends StatelessWidget {
           inputDecorationTheme: InputDecorationTheme(
             filled: true,
             fillColor: colorScheme.surface,
+            hintStyle: TextStyle(color: AppColors.inkMuted),
+            labelStyle: TextStyle(color: AppColors.inkMuted),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppRadii.md),
               borderSide: BorderSide(color: colorScheme.outline),
@@ -175,7 +179,7 @@ class SmartMessApp extends StatelessWidget {
           chipTheme: ChipThemeData(
             backgroundColor: colorScheme.surfaceVariant,
             labelStyle: TextStyle(
-              color: colorScheme.onSurfaceVariant,
+              color: AppColors.ink,
               fontWeight: FontWeight.w600,
             ),
             side: BorderSide(color: colorScheme.outlineVariant),

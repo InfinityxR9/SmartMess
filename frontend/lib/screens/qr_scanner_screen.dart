@@ -6,6 +6,7 @@ import 'package:smart_mess/providers/unified_auth_provider.dart';
 import 'package:smart_mess/services/attendance_service.dart';
 import 'package:smart_mess/utils/meal_time.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:smart_mess/theme/app_tokens.dart';
 
 class QRScannerScreen extends StatefulWidget {
   final String mealType;
@@ -450,13 +451,13 @@ class _QRScannerScreenState extends State<QRScannerScreen> with WidgetsBindingOb
           padding: const EdgeInsets.all(24),
           margin: const EdgeInsets.symmetric(horizontal: 24),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.surface,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.camera_alt, size: 48, color: Color(0xFF0B3954)),
+              const Icon(Icons.camera_alt, size: 48, color: AppColors.primary),
               const SizedBox(height: 16),
               const Text(
                 'Enable Camera to Scan',
@@ -467,7 +468,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> with WidgetsBindingOb
               Text(
                 infoText,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 12, color: Colors.black54),
+                style: const TextStyle(fontSize: 12, color: AppColors.inkMuted),
               ),
               const SizedBox(height: 16),
               ElevatedButton.icon(
@@ -509,7 +510,6 @@ class _QRScannerScreenState extends State<QRScannerScreen> with WidgetsBindingOb
       appBar: AppBar(
         title: Text('Scan QR - ${widget.mealType.toUpperCase()}'),
         elevation: 0,
-        backgroundColor: const Color(0xFF0B3954),
         actions: [
           if (kIsWeb)
             IconButton(
@@ -540,7 +540,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> with WidgetsBindingOb
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.error_outline, size: 64, color: Color(0xFFE63946)),
+                      const Icon(Icons.error_outline, size: 64, color: AppColors.danger),
                       const SizedBox(height: 16),
                       const Text(
                         'Camera Error',
@@ -554,20 +554,20 @@ class _QRScannerScreenState extends State<QRScannerScreen> with WidgetsBindingOb
                       Text(
                         message,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.grey, fontSize: 14),
+                        style: const TextStyle(color: Colors.white70, fontSize: 14),
                       ),
                       if (details != null && details.trim().isNotEmpty) ...[
                         const SizedBox(height: 6),
                         Text(
                           details,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(color: Colors.grey, fontSize: 12),
+                          style: const TextStyle(color: Colors.white70, fontSize: 12),
                         ),
                       ],
                       const SizedBox(height: 8),
                       Text(
                         'Code: ${error.errorCode.name}',
-                        style: const TextStyle(color: Colors.grey, fontSize: 11),
+                        style: const TextStyle(color: Colors.white70, fontSize: 11),
                       ),
                       const SizedBox(height: 24),
                       ElevatedButton(
@@ -597,8 +597,8 @@ class _QRScannerScreenState extends State<QRScannerScreen> with WidgetsBindingOb
                   padding: const EdgeInsets.all(32),
                   decoration: BoxDecoration(
                     color: _isSuccess
-                        ? const Color(0xFF2A9D8F)
-                        : const Color(0xFFE63946),
+                        ? AppColors.success
+                        : AppColors.danger,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Column(
@@ -688,7 +688,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> with WidgetsBindingOb
                       'Automatic scanning in progress',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: Colors.grey,
+                        color: Colors.white70,
                         fontSize: 12,
                       ),
                     ),

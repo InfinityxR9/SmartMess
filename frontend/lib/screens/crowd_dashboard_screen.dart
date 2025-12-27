@@ -155,6 +155,7 @@ class _CrowdDashboardScreenState extends State<CrowdDashboardScreen> {
         final crowdCount = crowdProvider.crowdCount;
         final percentage = crowdProvider.getCrowdPercentage(mess.capacity);
         final level = crowdProvider.getCrowdLevel(mess.capacity);
+        final textTheme = Theme.of(context).textTheme;
 
         return SingleChildScrollView(
           padding: EdgeInsets.all(16),
@@ -251,7 +252,7 @@ class _CrowdDashboardScreenState extends State<CrowdDashboardScreen> {
                               children: [
                                 Text(
                                   'Best Time to Visit',
-                                  style: TextStyle(fontWeight: FontWeight.w500),
+                                  style: textTheme.titleSmall,
                                 ),
                                 SizedBox(height: 8),
                                 Text(
@@ -264,7 +265,9 @@ class _CrowdDashboardScreenState extends State<CrowdDashboardScreen> {
                                 ),
                                 Text(
                                   'Predicted Crowd: ${predictionProvider.prediction!.bestSlot!.crowdPercentage.toStringAsFixed(1)}%',
-                                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                                  style: textTheme.bodySmall?.copyWith(
+                                    color: AppColors.inkMuted,
+                                  ),
                                 ),
                               ],
                             ),
@@ -273,7 +276,7 @@ class _CrowdDashboardScreenState extends State<CrowdDashboardScreen> {
                         ],
                         Text(
                           'Upcoming Slots',
-                          style: TextStyle(fontWeight: FontWeight.w500),
+                          style: textTheme.titleSmall,
                         ),
                         SizedBox(height: 12),
                         ListView.separated(
@@ -290,7 +293,17 @@ class _CrowdDashboardScreenState extends State<CrowdDashboardScreen> {
                                 Chip(
                                   label: Text(
                                     '${slot.crowdPercentage.toStringAsFixed(0)}%',
-                                    style: TextStyle(color: Colors.white),
+                                    style: TextStyle(
+                                      color: AppColors.onColor(
+                                        _getCrowdColor(
+                                          slot.crowdPercentage < 30
+                                              ? 'Low'
+                                              : slot.crowdPercentage < 60
+                                                  ? 'Medium'
+                                                  : 'High',
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                   backgroundColor: _getCrowdColor(
                                     slot.crowdPercentage < 30
@@ -328,7 +341,7 @@ class _CrowdDashboardScreenState extends State<CrowdDashboardScreen> {
       case 'High':
         return AppColors.danger;
       default:
-        return Colors.grey;
+        return AppColors.inkMuted;
     }
   }
 }

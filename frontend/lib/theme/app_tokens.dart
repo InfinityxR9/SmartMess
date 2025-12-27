@@ -15,6 +15,11 @@ class AppColors {
   static const Color surfaceAlt = Color(0xFFF2F7F9);
   static const Color outline = Color(0xFFD0D7DE);
   static const Color outlineSubtle = Color(0xFFE6EBEF);
+
+  static Color onColor(Color background) {
+    final brightness = ThemeData.estimateBrightnessForColor(background);
+    return brightness == Brightness.dark ? Colors.white : AppColors.ink;
+  }
 }
 
 class AppGradients {

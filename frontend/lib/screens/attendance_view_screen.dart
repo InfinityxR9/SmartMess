@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:smart_mess/theme/app_tokens.dart';
 
 class AttendanceViewScreen extends StatefulWidget {
   final String messId;
@@ -114,6 +115,7 @@ class _AttendanceViewScreenState extends State<AttendanceViewScreen> {
   Widget build(BuildContext context) {
     final mealLabel = _formatMealLabel(widget.mealType);
     final qrCodeId = widget.qrCodeId?.trim() ?? '';
+    final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
       appBar: AppBar(
@@ -143,7 +145,6 @@ class _AttendanceViewScreenState extends State<AttendanceViewScreen> {
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: Card(
-                    elevation: 2,
                     child: Padding(
                       padding: const EdgeInsets.all(20),
                       child: Column(
@@ -151,29 +152,29 @@ class _AttendanceViewScreenState extends State<AttendanceViewScreen> {
                         children: [
                           Text(
                             'Attendance for $mealLabel',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: textTheme.titleMedium,
                           ),
                           const SizedBox(height: 8),
                           Text(
                             'Date: $date',
-                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                            style: textTheme.bodySmall?.copyWith(
+                              color: AppColors.inkMuted,
+                            ),
                           ),
                           if (qrCodeId.isNotEmpty) ...[
                             const SizedBox(height: 4),
-                            const Text(
+                            Text(
                               'Filtered by QR code',
-                              style: TextStyle(fontSize: 12, color: Colors.grey),
+                              style: textTheme.bodySmall?.copyWith(
+                                color: AppColors.inkMuted,
+                              ),
                             ),
                           ],
                           const SizedBox(height: 16),
                           Text(
                             '$count students marked',
-                            style: const TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
+                            style: textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ],
@@ -183,19 +184,21 @@ class _AttendanceViewScreenState extends State<AttendanceViewScreen> {
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: const Text(
+                  child: Text(
                     'Student Details',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: textTheme.titleLarge,
                   ),
                 ),
                 const SizedBox(height: 12),
                 if (students.isEmpty)
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.all(16),
-                    child: Text('No attendance marked yet'),
+                    child: Text(
+                      'No attendance marked yet',
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: AppColors.inkMuted,
+                      ),
+                    ),
                   )
                 else
                   ListView.builder(
@@ -211,17 +214,22 @@ class _AttendanceViewScreenState extends State<AttendanceViewScreen> {
                         margin: const EdgeInsets.only(bottom: 8),
                         child: ListTile(
                           leading: CircleAvatar(
-                            backgroundColor: const Color(0xFFFFD166),
+                            backgroundColor: AppColors.secondary,
+                            foregroundColor: AppColors.primary,
                             child: Text((index + 1).toString()),
                           ),
                           title: Text(student['studentName']?.toString() ?? 'Anonymous'),
                           subtitle: Text(
                             'ID: ${student['enrollmentId']?.toString() ?? 'Anonymous'} | $markedByLabel',
-                            style: const TextStyle(fontSize: 12),
+                            style: textTheme.bodySmall?.copyWith(
+                              color: AppColors.inkMuted,
+                            ),
                           ),
                           trailing: Text(
                             _formatMarkedTime(student['markedAt']),
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                            style: textTheme.bodySmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       );
