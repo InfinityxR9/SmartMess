@@ -27,21 +27,13 @@ class _PredictionScreenState extends State<PredictionScreen> {
   }
 
   Future<PredictionResult?> _loadPredictions(String messId, String? slot) async {
-    await _predictionService.trainModel(
+    return _predictionService.trainAndPredict(
       messId,
       slot: slot,
       capacity: _messCapacity,
       minutesBack: 15,
       asyncTrain: false,
       forceTrain: true,
-    );
-    return _predictionService.getPrediction(
-      messId,
-      slot: slot,
-      capacity: _messCapacity,
-      minutesBack: 15,
-      autoTrain: false,
-      asyncTrain: false,
     );
   }
 

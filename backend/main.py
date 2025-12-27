@@ -121,7 +121,8 @@ def _start_background_training(
     dev_mode,
     force_train,
 ):
-    key = f"{mess_id}:{meal_type}"
+    meal_key = meal_type or 'all'
+    key = f"{mess_id}:{meal_key}"
     if key in _TRAINING_IN_PROGRESS:
         return
 
@@ -189,6 +190,21 @@ def normalize_meal_type(meal_type):
         return None
     normalized = str(meal_type).strip().lower()
     return normalized if normalized in MEAL_WINDOWS else None
+
+def parse_bool(value, default=False):
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in ('true', '1', 'yes', 'y', 'on'):
+            return True
+        if normalized in ('false', '0', 'no', 'n', 'off'):
+            return False
+    return default
 
 def parse_capacity(value):
     try:
@@ -339,8 +355,7 @@ def train_mess_model(
         'usedDummy': False,
         'skippedRecent': False,
     }
-    if not meal_type:
-        return training_info
+    meal_label = meal_type or 'all'
 
     try:
         if minutes_back is None and not force_train and _has_recent_model(mess_id, max_age_minutes=60):
@@ -385,11 +400,11 @@ def train_mess_model(
             training_info['trained'] = regressor.train(attendance_records)
             if training_info['trained']:
                 prediction_service.models_cache.pop(mess_id, None)
-                print(f"[OK] Trained model for {mess_id} ({meal_type}) with {len(attendance_records)} records")
+                print(f"[OK] Trained model for {mess_id} ({meal_label}) with {len(attendance_records)} records")
             else:
                 print(f"[WARN] Training skipped for {mess_id} due to insufficient data")
         else:
-            print(f"[WARN] No historical data for {mess_id} ({meal_type}); using existing model")
+            print(f"[WARN] No historical data for {mess_id} ({meal_label}); using existing model")
     except Exception as e:
         _disable_firestore_if_needed(e)
         print(f"[WARN] Training failed for {mess_id}: {e}")
@@ -414,22 +429,15 @@ def predict():
     try:
         data = request.get_json() or {}
         mess_id = data.get('messId')
-        dev_mode = data.get('devMode', False)  # Allow predictions outside meal times in dev mode
+        dev_mode = parse_bool(data.get('devMode'), False)  # Allow predictions outside meal times in dev mode
         requested_slot = normalize_meal_type(data.get('slot') or data.get('mealType'))
-        force_train = bool(data.get('forceTrain', False))
-        auto_train = bool(data.get('autoTrain', True))
-        async_train = bool(data.get('asyncTrain', True))
+        force_train = parse_bool(data.get('forceTrain'), False)
+        auto_train = parse_bool(data.get('autoTrain'), True)
+        async_train = parse_bool(data.get('asyncTrain'), True)
         try:
             days_back = max(1, int(data.get('daysBack', 30)))
         except Exception:
             days_back = 30
-        try:
-            minutes_back = data.get('minutesBack')
-            minutes_back = int(minutes_back) if minutes_back is not None else None
-            if minutes_back is not None and minutes_back <= 0:
-                minutes_back = None
-        except Exception:
-            minutes_back = None
         try:
             minutes_back = data.get('minutesBack')
             minutes_back = int(minutes_back) if minutes_back is not None else None
@@ -586,10 +594,14 @@ def train_model():
     try:
         data = request.get_json() or {}
         mess_id = data.get('messId')
-        requested_slot = normalize_meal_type(data.get('slot') or data.get('mealType'))
-        force_train = bool(data.get('forceTrain', True))
-        dev_mode = bool(data.get('devMode', False))
-        async_train = bool(data.get('asyncTrain', True))
+        raw_slot = data.get('slot')
+        if raw_slot is None:
+            raw_slot = data.get('mealType')
+        slot_present = raw_slot is not None and str(raw_slot).strip() != ''
+        requested_slot = normalize_meal_type(raw_slot)
+        force_train = parse_bool(data.get('forceTrain'), True)
+        dev_mode = parse_bool(data.get('devMode'), False)
+        async_train = parse_bool(data.get('asyncTrain'), True)
         try:
             days_back = max(1, int(data.get('daysBack', 30)))
         except Exception:
@@ -607,24 +619,25 @@ def train_model():
                 'error': 'messId is required'
             }), 400
 
+        if slot_present and not requested_slot:
+            return jsonify({'error': 'Invalid slot. Use breakfast, lunch, or dinner.'}), 400
+
         current_time = datetime.now()
-        meal_type = requested_slot or get_meal_type_exact(current_time.hour, current_time.minute)
+        meal_type = requested_slot
+        if meal_type is None and minutes_back is not None:
+            meal_type = get_meal_type_exact(current_time.hour, current_time.minute)
 
-        if not meal_type and dev_mode:
-            hour = current_time.hour
-            if hour < 12:
-                meal_type = 'breakfast'
-            elif hour < 19:
-                meal_type = 'lunch'
-            else:
-                meal_type = 'dinner'
+            if not meal_type and dev_mode:
+                hour = current_time.hour
+                if hour < 12:
+                    meal_type = 'breakfast'
+                elif hour < 19:
+                    meal_type = 'lunch'
+                else:
+                    meal_type = 'dinner'
 
-        if not meal_type:
-            return jsonify({
-                'messId': mess_id,
-                'warning': 'Outside meal hours. Provide slot to train.',
-                'training': {'trained': False, 'records': 0}
-            }), 200
+            if not meal_type:
+                minutes_back = None
 
         training_info = {'trained': False, 'records': 0}
         should_train = minutes_back is not None or force_train or not _has_recent_model(mess_id)

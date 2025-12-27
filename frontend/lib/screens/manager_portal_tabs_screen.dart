@@ -265,21 +265,13 @@ class _ManagerPredictionTabState extends State<ManagerPredictionTab> {
   }
 
   Future<PredictionResult?> _loadPredictions(String slotType) async {
-    await _predictionService.trainModel(
+    return _predictionService.trainAndPredict(
       widget.messId,
       slot: slotType,
       capacity: _messCapacity,
       minutesBack: 15,
       asyncTrain: false,
       forceTrain: true,
-    );
-    return _predictionService.getPrediction(
-      widget.messId,
-      slot: slotType,
-      capacity: _messCapacity,
-      minutesBack: 15,
-      autoTrain: false,
-      asyncTrain: false,
     );
   }
 
@@ -468,21 +460,13 @@ class _ManagerAttendanceTabState extends State<ManagerAttendanceTab> {
   }
 
   Future<PredictionResult?> _loadPredictions(String slotType) async {
-    await _predictionService.trainModel(
+    return _predictionService.trainAndPredict(
       widget.messId,
       slot: slotType,
       capacity: _messCapacity,
       minutesBack: 15,
       asyncTrain: false,
       forceTrain: true,
-    );
-    return _predictionService.getPrediction(
-      widget.messId,
-      slot: slotType,
-      capacity: _messCapacity,
-      minutesBack: 15,
-      autoTrain: false,
-      asyncTrain: false,
     );
   }
 

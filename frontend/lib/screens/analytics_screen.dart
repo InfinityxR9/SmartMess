@@ -37,21 +37,13 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   Future<PredictionResult?> _loadPredictions(String? slot) async {
-    await _predictionService.trainModel(
+    return _predictionService.trainAndPredict(
       widget.messId,
       slot: slot,
       capacity: _messCapacity,
       minutesBack: 15,
       asyncTrain: false,
       forceTrain: true,
-    );
-    return _predictionService.getPrediction(
-      widget.messId,
-      slot: slot,
-      capacity: _messCapacity,
-      minutesBack: 15,
-      autoTrain: false,
-      asyncTrain: false,
     );
   }
 

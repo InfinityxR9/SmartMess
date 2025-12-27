@@ -27,6 +27,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> with WidgetsBindingOb
   bool _isSuccess = false;
   String? _enrollmentId;
   bool _isStartingCamera = false;
+  bool _hasStartedCamera = false;
   bool _isRequestingPermission = false;
   String? _cameraError;
   PermissionStatus? _cameraPermissionStatus;
@@ -80,6 +81,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> with WidgetsBindingOb
       }
     } else if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
       cameraController.stop();
+      _hasStartedCamera = false;
     }
   }
 
@@ -272,6 +274,10 @@ class _QRScannerScreenState extends State<QRScannerScreen> with WidgetsBindingOb
       });
       return;
     }
+    if (kIsWeb) {
+      await _startCameraPreview();
+      return;
+    }
 
     try {
       final status = await Permission.camera.status;
@@ -310,6 +316,25 @@ class _QRScannerScreenState extends State<QRScannerScreen> with WidgetsBindingOb
     return 'Camera permission not granted.';
   }
 
+  String _scannerErrorMessage(MobileScannerException error) {
+    if (kIsWeb && !_isSecureContext) {
+      return 'Camera access on web requires HTTPS or localhost.';
+    }
+    switch (error.errorCode) {
+      case MobileScannerErrorCode.controllerUninitialized:
+        return 'Camera is still starting. Tap retry in a moment.';
+      case MobileScannerErrorCode.permissionDenied:
+        return kIsWeb
+            ? 'Camera permission denied in the browser. Allow access and retry.'
+            : 'Camera permission denied. Enable access in Settings.';
+      case MobileScannerErrorCode.unsupported:
+        return 'Camera scanning is not supported on this device/browser.';
+      case MobileScannerErrorCode.genericError:
+      default:
+        return 'Unable to start the camera. Please try again.';
+    }
+  }
+
   Future<void> _requestPermissionAndStart() async {
     if (_isRequestingPermission || _isStartingCamera) {
       return;
@@ -319,6 +344,11 @@ class _QRScannerScreenState extends State<QRScannerScreen> with WidgetsBindingOb
       setState(() {
         _cameraError = 'Camera access requires HTTPS or localhost.';
       });
+      return;
+    }
+
+    if (kIsWeb) {
+      await _startCameraPreview();
       return;
     }
 
@@ -363,7 +393,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> with WidgetsBindingOb
   }
 
   Future<void> _startCameraPreview() async {
-    if (_isStartingCamera) {
+    if (_isStartingCamera || _hasStartedCamera) {
       return;
     }
     setState(() {
@@ -378,7 +408,11 @@ class _QRScannerScreenState extends State<QRScannerScreen> with WidgetsBindingOb
       }
       setState(() {
         _cameraError = null;
+        if (!_cameraPermissionGranted) {
+          _cameraPermissionStatus = PermissionStatus.granted;
+        }
       });
+      _hasStartedCamera = true;
     } catch (_) {
       if (!mounted) {
         return;
@@ -498,6 +532,8 @@ class _QRScannerScreenState extends State<QRScannerScreen> with WidgetsBindingOb
               return _buildCameraGate();
             },
             errorBuilder: (context, error, child) {
+              final message = _scannerErrorMessage(error);
+              final details = error.errorDetails?.message;
               return Container(
                 color: Colors.black,
                 child: Center(
@@ -516,17 +552,37 @@ class _QRScannerScreenState extends State<QRScannerScreen> with WidgetsBindingOb
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        kIsWeb
-                            ? 'Browser camera access needed. Enable HTTPS and camera permissions.'
-                            : 'Please enable camera permissions in settings',
+                        message,
                         textAlign: TextAlign.center,
                         style: const TextStyle(color: Colors.grey, fontSize: 14),
+                      ),
+                      if (details != null && details.trim().isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          details,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.grey, fontSize: 12),
+                        ),
+                      ],
+                      const SizedBox(height: 8),
+                      Text(
+                        'Code: ${error.errorCode.name}',
+                        style: const TextStyle(color: Colors.grey, fontSize: 11),
                       ),
                       const SizedBox(height: 24),
                       ElevatedButton(
                         onPressed: _requestPermissionAndStart,
                         child: const Text('Retry'),
                       ),
+                      if (!kIsWeb && error.errorCode == MobileScannerErrorCode.permissionDenied)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: TextButton.icon(
+                            icon: const Icon(Icons.settings),
+                            label: const Text('Open Settings'),
+                            onPressed: openAppSettings,
+                          ),
+                        ),
                     ],
                   ),
                 ),

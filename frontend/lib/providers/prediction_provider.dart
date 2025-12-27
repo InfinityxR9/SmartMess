@@ -25,21 +25,13 @@ class PredictionProvider extends ChangeNotifier {
       if (messId.isEmpty) {
         _prediction = null;
       } else {
-        await _predictionService.trainModel(
+        _prediction = await _predictionService.trainAndPredict(
           messId,
           slot: slot,
           capacity: capacity,
           minutesBack: 15,
           asyncTrain: false,
           forceTrain: true,
-        );
-        _prediction = await _predictionService.getPrediction(
-          messId,
-          slot: slot,
-          capacity: capacity,
-          minutesBack: 15,
-          autoTrain: false,
-          asyncTrain: false,
         );
       }
       _isLoading = false;

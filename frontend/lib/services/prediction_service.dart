@@ -38,6 +38,12 @@ class PredictionService {
     );
   }
 
+  String? _normalizeSlot(String? slot) {
+    if (slot == null) return null;
+    final normalized = slot.trim().toLowerCase();
+    return normalized.isEmpty ? null : normalized;
+  }
+
   Future<PredictionResult?> getPrediction(
     String messId, {
     String? slot,
@@ -56,15 +62,18 @@ class PredictionService {
         _logWebSkip();
         return null;
       }
+      final normalizedSlot = _normalizeSlot(slot);
       final payload = <String, dynamic>{
         'messId': messId,
         'devMode': true,
-        'slot': slot,
         'forceTrain': forceTrain,
         'autoTrain': autoTrain,
         'asyncTrain': asyncTrain,
         'daysBack': daysBack,
       };
+      if (normalizedSlot != null) {
+        payload['slot'] = normalizedSlot;
+      }
       if (minutesBack != null && minutesBack > 0) {
         payload['minutesBack'] = minutesBack;
       }
@@ -90,7 +99,7 @@ class PredictionService {
     }
   }
 
-  Future<void> trainModel(
+  Future<bool> trainModel(
     String messId, {
     String? slot,
     int daysBack = 30,
@@ -101,35 +110,92 @@ class PredictionService {
   }) async {
     try {
       if (messId.isEmpty) {
-        return;
+        return false;
       }
       if (_shouldSkipWebRequest()) {
         _logWebSkip();
-        return;
+        return false;
       }
+      final normalizedSlot = _normalizeSlot(slot);
       final payload = <String, dynamic>{
         'messId': messId,
-        'slot': slot,
         'daysBack': daysBack,
         'forceTrain': forceTrain,
         'devMode': true,
         'asyncTrain': asyncTrain,
       };
+      if (normalizedSlot != null) {
+        payload['slot'] = normalizedSlot;
+      }
       if (minutesBack != null && minutesBack > 0) {
         payload['minutesBack'] = minutesBack;
       }
       if (capacity != null && capacity > 0) {
         payload['capacity'] = capacity;
       }
-      await http
+      final response = await http
           .post(
             Uri.parse('$baseUrl/train'),
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode(payload),
           )
           .timeout(const Duration(seconds: 30));
-    } catch (_) {
-      // Ignore training errors; predictions handle fallbacks.
+      if (response.statusCode != 200) {
+        print('[Prediction] Train returned ${response.statusCode}: ${response.body}');
+        return false;
+      }
+      try {
+        final data = jsonDecode(response.body);
+        if (data is Map<String, dynamic>) {
+          if (data['warning'] != null) {
+            print('[Prediction] Train warning: ${data['warning']}');
+            return false;
+          }
+          final training = data['training'];
+          if (training is Map) {
+            final trained = training['trained'] == true || training['queued'] == true;
+            if (!trained) {
+              return false;
+            }
+          }
+        }
+      } catch (_) {
+        // Non-JSON response; treat as success.
+      }
+      return true;
+    } catch (e) {
+      print('[Prediction] Train error: $e');
+      return false;
     }
+  }
+
+  Future<PredictionResult?> trainAndPredict(
+    String messId, {
+    String? slot,
+    int daysBack = 30,
+    int? minutesBack,
+    int? capacity,
+    bool asyncTrain = false,
+    bool forceTrain = true,
+  }) async {
+    final trained = await trainModel(
+      messId,
+      slot: slot,
+      daysBack: daysBack,
+      minutesBack: minutesBack,
+      capacity: capacity,
+      asyncTrain: asyncTrain,
+      forceTrain: forceTrain,
+    );
+    return getPrediction(
+      messId,
+      slot: slot,
+      daysBack: daysBack,
+      minutesBack: minutesBack,
+      capacity: capacity,
+      forceTrain: forceTrain,
+      autoTrain: !trained,
+      asyncTrain: asyncTrain,
+    );
   }
 }
