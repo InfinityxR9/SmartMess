@@ -8,6 +8,7 @@ import os
 import sys
 import json
 import inspect
+import threading
 from collections import defaultdict
 from datetime import datetime, timedelta
 import firebase_admin
@@ -20,9 +21,36 @@ from tensorflow.keras import layers
 import joblib
 
 _STREAM_SUPPORTS_TIMEOUT = None
+_FIRESTORE_DISABLED = False
+_FIRESTORE_ERROR_TOKENS = (
+    'invalid_grant',
+    'access_token_expired',
+    'invalid authentication credentials',
+    'unauthenticated',
+    'permission denied',
+    'token must be',
+    'jwt',
+    'metadata',
+    'oauth',
+    '401',
+)
+
+def _disable_firestore_if_needed(error, label):
+    global _FIRESTORE_DISABLED
+    if _FIRESTORE_DISABLED:
+        return True
+    message = str(error).lower()
+    if any(token in message for token in _FIRESTORE_ERROR_TOKENS):
+        _FIRESTORE_DISABLED = True
+        print(f"[WARN] Firestore disabled due to credential error at {label}.")
+        print("[WARN] Check serviceAccountKey.json or system clock if this is unexpected.")
+        return True
+    return False
 
 def _safe_stream(ref, timeout_s, label):
     global _STREAM_SUPPORTS_TIMEOUT
+    if _FIRESTORE_DISABLED:
+        return None
     if _STREAM_SUPPORTS_TIMEOUT is None:
         try:
             _STREAM_SUPPORTS_TIMEOUT = 'timeout' in inspect.signature(ref.stream).parameters
@@ -31,18 +59,56 @@ def _safe_stream(ref, timeout_s, label):
     try:
         if _STREAM_SUPPORTS_TIMEOUT:
             return list(ref.stream(timeout=timeout_s))
-        return list(ref.stream())
+        result = []
+        error_holder = []
+
+        def _runner():
+            try:
+                result.extend(list(ref.stream()))
+            except Exception as e:
+                error_holder.append(e)
+
+        thread = threading.Thread(target=_runner, daemon=True)
+        thread.start()
+        thread.join(timeout_s)
+        if thread.is_alive():
+            print(f"[WARN] Firestore stream timed out for {label} after {timeout_s}s")
+            return None
+        if error_holder:
+            raise error_holder[0]
+        return result
     except Exception as e:
+        if _disable_firestore_if_needed(e, label):
+            return None
         print(f"[WARN] Firestore stream failed for {label}: {e}")
-        return []
+        return None
+
+def _resolve_credentials_path():
+    candidates = []
+    env_path = os.environ.get('FIREBASE_CREDENTIALS_PATH')
+    if env_path:
+        candidates.append(env_path)
+    env_google = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')
+    if env_google:
+        candidates.append(env_google)
+    candidates.append('serviceAccountKey.json')
+    candidates.append('../backend/serviceAccountKey.json')
+    for path in candidates:
+        if path and os.path.isfile(path):
+            return path
+    return None
 
 def _init_firestore_client():
     """Initialize Firestore client with service account or ADC fallback."""
     try:
-        if os.path.exists('serviceAccountKey.json'):
-            cred = credentials.Certificate('serviceAccountKey.json')
-        elif os.path.exists('../backend/serviceAccountKey.json'):
-            cred = credentials.Certificate('../backend/serviceAccountKey.json')
+        if os.environ.get('FIRESTORE_DISABLED', '').strip() == '1':
+            print("[WARN] FIRESTORE_DISABLED=1, skipping Firestore.")
+            return None
+
+        credentials_path = _resolve_credentials_path()
+        if credentials_path:
+            cred = credentials.Certificate(credentials_path)
+            print(f"[INFO] Using service account: {credentials_path}")
         else:
             try:
                 cred = credentials.ApplicationDefault()
@@ -106,9 +172,43 @@ class MessCrowdRegressor:
         features = []
         targets = []
         bucket_counts = defaultdict(int)
+        meal_midpoints = {
+            'breakfast': (8, 15),
+            'lunch': (13, 0),
+            'dinner': (20, 15),
+        }
         
         for record in attendance_records:
             try:
+                count_override = record.get('count')
+                meal_hint = record.get('meal') or record.get('mealType')
+                date_hint = record.get('date')
+                if count_override is not None and meal_hint and date_hint:
+                    normalized_meal = str(meal_hint).strip().lower()
+                    midpoint = meal_midpoints.get(normalized_meal)
+                    if midpoint is None:
+                        continue
+                    if isinstance(date_hint, datetime):
+                        base_date = date_hint
+                    else:
+                        try:
+                            base_date = datetime.fromisoformat(str(date_hint))
+                        except Exception:
+                            continue
+                    hour, minute = midpoint
+                    dt = base_date.replace(hour=hour, minute=minute, second=0, microsecond=0)
+                    meal_type = {'breakfast': 0, 'lunch': 1, 'dinner': 2}.get(normalized_meal, -1)
+                    if meal_type < 0:
+                        continue
+                    day_of_week = dt.weekday()
+                    slot_minute = (dt.minute // 15) * 15
+                    bucket_key = (dt.date(), hour, slot_minute, day_of_week, meal_type)
+                    try:
+                        bucket_counts[bucket_key] += int(count_override)
+                    except Exception:
+                        continue
+                    continue
+
                 # Parse timestamp
                 marked_at = record.get('markedAt')
                 dt = None
@@ -249,14 +349,19 @@ def load_firebase_data(mess_id, days_back=7):
         db = _init_firestore_client()
         if db is None:
             return []
+        if _FIRESTORE_DISABLED:
+            return []
 
         try:
             query_timeout_s = int(os.environ.get('FIRESTORE_QUERY_TIMEOUT', '30'))
         except Exception:
             query_timeout_s = 30
+        try:
+            max_errors = int(os.environ.get('FIRESTORE_MAX_ERRORS', '5'))
+        except Exception:
+            max_errors = 5
         attendance_records = []
-        start_date = datetime.now() - timedelta(days=days_back)
-        
+
         try:
             # Query mess-specific data: attendance/{mess_id}/{date}/{meal}/students
             print(f"[QUERY] Querying Firebase for {mess_id} (days_back={days_back}, timeout={query_timeout_s}s)...")
@@ -267,34 +372,40 @@ def load_firebase_data(mess_id, days_back=7):
             # Try common date formats from now backwards
             collected_records = 0
             
+            meal_types = ('breakfast', 'lunch', 'dinner')
+            error_count = 0
+
             for day_offset in range(days_back):
+                if _FIRESTORE_DISABLED:
+                    break
                 check_date = datetime.now() - timedelta(days=day_offset)
                 date_str = check_date.strftime('%Y-%m-%d')
                 if day_offset == 0 or day_offset % 7 == 0:
                     print(f"[QUERY] Scanning date: {date_str}")
                 
                 try:
-                    # Try to access the date document
                     date_ref = mess_ref.collection(date_str)
-                    
-                    # Get all meals for this date
-                    meals = _safe_stream(date_ref, query_timeout_s, f"{mess_id}/{date_str}")
-                    
-                    for meal_doc in meals:
-                        meal_type = meal_doc.id
-                        
+
+                    for meal_type in meal_types:
+                        if _FIRESTORE_DISABLED:
+                            break
                         try:
-                            # Get students collection for this meal
-                            students_ref = meal_doc.reference.collection('students')
+                            students_ref = date_ref.document(meal_type).collection('students')
                             students = _safe_stream(
                                 students_ref,
                                 query_timeout_s,
                                 f"{mess_id}/{date_str}/{meal_type}/students",
                             )
-                            
+                            if students is None:
+                                error_count += 1
+                                if error_count >= max_errors:
+                                    print("[WARN] Too many Firestore errors; stopping scan.")
+                                    return attendance_records
+                                continue
+
                             for student_doc in students:
                                 student_data = student_doc.to_dict() or {}
-                                
+
                                 # Extract record info
                                 enrollment_id = student_doc.id
                                 marked_at = student_data.get('markedAt')
@@ -307,7 +418,7 @@ def load_firebase_data(mess_id, days_back=7):
                                     marked_at = marked_at.isoformat()
                                 student_name = student_data.get('studentName', 'Unknown')
                                 marked_by = student_data.get('markedBy', 'unknown')
-                                
+
                                 attendance_records.append({
                                     'enrollmentId': enrollment_id,
                                     'markedAt': marked_at,
@@ -319,7 +430,8 @@ def load_firebase_data(mess_id, days_back=7):
                                 })
                                 collected_records += 1
                         except Exception as e:
-                            # Collection might not exist
+                            if _disable_firestore_if_needed(e, f"{mess_id}/{date_str}/{meal_type}"):
+                                break
                             continue
                 
                 except Exception as e:
@@ -391,6 +503,14 @@ def generate_dummy_attendance_data(mess_id, days=7, records_per_day=40):
     
     print(f"[OK] Generated {len(records)} dummy records for {mess_id}")
     return records
+
+def train_mess_model_from_data(mess_id, attendance_records):
+    """Train a model directly from provided attendance records."""
+    if not attendance_records:
+        print(f"[WARN] No training data provided for {mess_id}")
+        return False
+    regressor = MessCrowdRegressor(mess_id)
+    return regressor.train(attendance_records)
 
 def main():
     """Main training pipeline"""

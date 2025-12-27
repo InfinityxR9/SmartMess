@@ -15,34 +15,77 @@ from prediction_model_tf import PredictionService
 
 app = Flask(__name__)
 
-# Configure CORS properly for all origins
+def _load_allowed_origins():
+    raw = os.environ.get('CORS_ORIGINS', '').strip()
+    if raw:
+        if raw == '*':
+            return ['*'], True
+        origins = []
+        for item in raw.split(','):
+            origin = item.strip().rstrip('/')
+            if origin:
+                origins.append(origin)
+        return origins, False
+    return [
+        'http://localhost:8080',
+        'http://127.0.0.1:8080',
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+        'http://localhost:4200',
+        'http://127.0.0.1:4200',
+    ], False
+
+_ALLOWED_ORIGINS, _ALLOW_ALL_ORIGINS = _load_allowed_origins()
+
+def _is_origin_allowed(origin):
+    if _ALLOW_ALL_ORIGINS or not origin:
+        return True
+    normalized = origin.rstrip('/')
+    return normalized in _ALLOWED_ORIGINS
+
+# Configure CORS for allowed origins only
+cors_origins = '*' if _ALLOW_ALL_ORIGINS else _ALLOWED_ORIGINS
 CORS(app, resources={
     r"/*": {
-        "origins": ["*"],
+        "origins": cors_origins,
         "methods": ["GET", "POST", "OPTIONS", "DELETE", "PUT"],
         "allow_headers": ["Content-Type", "Authorization"]
     }
 })
 
-# Add after-request handler for CORS headers
-@app.after_request
-def add_cors_headers(response):
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS, DELETE, PUT'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
-    return response
+@app.before_request
+def enforce_origin_allowlist():
+    origin = request.headers.get('Origin')
+    if origin and not _is_origin_allowed(origin):
+        return jsonify({'error': 'Origin not allowed'}), 403
+
+def _resolve_firebase_credentials_path():
+    candidates = []
+    env_path = os.environ.get('FIREBASE_CREDENTIALS_PATH')
+    if env_path:
+        candidates.append(env_path)
+    env_google = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')
+    if env_google:
+        candidates.append(env_google)
+    candidates.append(os.path.join(os.path.dirname(__file__), 'serviceAccountKey.json'))
+    candidates.append(os.path.join(os.getcwd(), 'serviceAccountKey.json'))
+    for path in candidates:
+        if path and os.path.isfile(path):
+            return path
+    return None
 
 # Initialize Firebase
 try:
-    # Prefer bundled service account; fall back to ADC if needed
-    service_account_path = os.path.join(os.path.dirname(__file__), 'serviceAccountKey.json')
-    if os.path.exists(service_account_path):
-        cred = credentials.Certificate(service_account_path)
-    elif os.path.exists('serviceAccountKey.json'):
-        cred = credentials.Certificate('serviceAccountKey.json')
+    credentials_path = _resolve_firebase_credentials_path()
+    if credentials_path:
+        cred = credentials.Certificate(credentials_path)
+        print(f"[Firebase] Using service account: {credentials_path}")
     else:
         cred = credentials.ApplicationDefault()
-    
+        print("[Firebase] Using application default credentials")
+
     firebase_admin.initialize_app(cred)
     db = firestore.client()
 except Exception as e:

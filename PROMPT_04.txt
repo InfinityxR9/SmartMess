@@ -1,0 +1,11 @@
+1) Fix the qr scanning functionality, why is it not working? Do everything you can to make it functional, ask the browser for permission and allow it to scan.. I WANT IT FUCKING FUNCTIONAL NOW AT ANY COST
+
+2) Secondly, we'll use firebase hosting for hosting the frontend and Render for backend, how do i do it? Make a docs file explaining each and every step for beginner who doesn't know anything about the deployment at these services.
+
+3) Additionally, at the time of deployment, there're API keys and other sensitive information in various files (Scan files to find out where they are), how do we handle them and ensure security in the deployment and inject them at the time of deployment? (other things like serviceaccountkey.json files for an example, how do we handle them at production level?)
+
+4) Setup the CORS policy properly such that the only our frontend server can have access to backend (locking domain).. make sure everything works at production level perfectly
+
+5) uncaught errors in the web console when opening the predictions page.. fix them.. rewrite the ml model and make sure it is working ALRIGHT and WORKING
+tried manual running of train_tensorflow, stuck at [QUERY] Scanning date: 2025-12-27
+in console having error: Firestore disabled due to credential error. Falling back to dummy data.

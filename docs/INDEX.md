@@ -46,6 +46,14 @@
   - Environment setup
   - Monitoring and logging
   - Post-deployment checklist
+- **[docs/DEPLOY_FIREBASE_RENDER.md](docs/DEPLOY_FIREBASE_RENDER.md)**
+  - Beginner guide for Firebase Hosting (frontend)
+  - Beginner guide for Render (backend)
+  - End-to-end deployment steps
+- **[docs/SECRETS_AND_DEPLOYMENT.md](docs/SECRETS_AND_DEPLOYMENT.md)**
+  - Secret handling and deployment injection
+  - Where secrets exist in this repo
+  - Production security checklist
 
 ### API Reference
 - **[docs/API_DOCUMENTATION.md](docs/API_DOCUMENTATION.md)**

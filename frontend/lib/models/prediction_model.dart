@@ -10,17 +10,28 @@ class PredictionResult {
   });
 
   factory PredictionResult.fromJson(Map<String, dynamic> json) {
-    final predictions = (json['predictions'] as List<dynamic>?)
-        ?.map((p) => TimeSlotPrediction.fromJson(p as Map<String, dynamic>))
-        .toList() ?? [];
-    
-    final bestSlotData = json['best_slot'] as Map<String, dynamic>?;
-    final bestSlot = bestSlotData != null 
-        ? TimeSlotPrediction.fromJson(bestSlotData)
-        : null;
+    final predictions = <TimeSlotPrediction>[];
+    final rawPredictions = json['predictions'];
+    if (rawPredictions is List) {
+      for (final item in rawPredictions) {
+        if (item is Map<String, dynamic>) {
+          predictions.add(TimeSlotPrediction.fromJson(item));
+        } else if (item is Map) {
+          predictions.add(TimeSlotPrediction.fromJson(Map<String, dynamic>.from(item)));
+        }
+      }
+    }
+
+    final bestSlotRaw = json['best_slot'] ?? json['bestSlot'];
+    TimeSlotPrediction? bestSlot;
+    if (bestSlotRaw is Map<String, dynamic>) {
+      bestSlot = TimeSlotPrediction.fromJson(bestSlotRaw);
+    } else if (bestSlotRaw is Map) {
+      bestSlot = TimeSlotPrediction.fromJson(Map<String, dynamic>.from(bestSlotRaw));
+    }
 
     return PredictionResult(
-      messId: json['messId'] ?? '',
+      messId: (json['messId'] ?? json['mess_id'] ?? '').toString(),
       predictions: predictions,
       bestSlot: bestSlot,
     );
@@ -39,13 +50,22 @@ class TimeSlotPrediction {
   });
 
   factory TimeSlotPrediction.fromJson(Map<String, dynamic> json) {
-    final predictedCrowd = (json['predicted_crowd'] ?? 0.0).toDouble();
-    final capacity = (json['capacity'] ?? 0.0).toDouble();
-    final crowdPercentage = capacity > 0
+    double readDouble(dynamic value) {
+      if (value is num) return value.toDouble();
+      if (value is String) return double.tryParse(value) ?? 0.0;
+      return 0.0;
+    }
+
+    final predictedCrowd = readDouble(json['predicted_crowd'] ?? json['predictedCrowd']);
+    final capacity = readDouble(json['capacity']);
+    double crowdPercentage = capacity > 0
         ? (predictedCrowd / capacity) * 100
-        : (json['crowd_percentage'] ?? 0.0).toDouble();
+        : readDouble(json['crowd_percentage'] ?? json['crowdPercentage']);
+    if (crowdPercentage.isNaN || crowdPercentage.isInfinite) {
+      crowdPercentage = 0.0;
+    }
     return TimeSlotPrediction(
-      timeSlot: json['time_slot'] ?? '',
+      timeSlot: (json['time_slot'] ?? json['timeSlot'] ?? '').toString(),
       predictedCrowd: predictedCrowd,
       crowdPercentage: crowdPercentage,
     );

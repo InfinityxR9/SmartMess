@@ -1,11 +1,42 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:smart_mess/models/prediction_model.dart';
 
 class PredictionService {
   // Use --dart-define=SMARTMESS_BACKEND_URL=... to override in production.
   static const String baseUrl =
       String.fromEnvironment('SMARTMESS_BACKEND_URL', defaultValue: 'http://localhost:8080');
+
+  bool _shouldSkipWebRequest() {
+    if (!kIsWeb) return false;
+    if (baseUrl.trim().isEmpty) return true;
+    final baseUri = Uri.tryParse(baseUrl);
+    if (baseUri == null || !baseUri.hasScheme) {
+      return true;
+    }
+    final pageUri = Uri.base;
+    if (pageUri.scheme == 'https' && baseUri.scheme == 'http') {
+      return true; // mixed content blocked by browsers
+    }
+    final baseHost = baseUri.host;
+    final pageHost = pageUri.host;
+    final isLocalBase = baseHost == 'localhost' || baseHost == '127.0.0.1';
+    final isLocalPage = pageHost == 'localhost' || pageHost == '127.0.0.1';
+    if (isLocalBase && !isLocalPage) {
+      return true; // hosted app still pointing to localhost
+    }
+    return false;
+  }
+
+  void _logWebSkip() {
+    if (!kIsWeb) return;
+    final pageUri = Uri.base;
+    print(
+      '[Prediction] Backend URL is not configured for web hosting. '
+      'Current page: ${pageUri.origin}, baseUrl: $baseUrl',
+    );
+  }
 
   Future<PredictionResult?> getPrediction(
     String messId, {
@@ -19,6 +50,10 @@ class PredictionService {
   }) async {
     try {
       if (messId.isEmpty) {
+        return null;
+      }
+      if (_shouldSkipWebRequest()) {
+        _logWebSkip();
         return null;
       }
       final payload = <String, dynamic>{
@@ -66,6 +101,10 @@ class PredictionService {
   }) async {
     try {
       if (messId.isEmpty) {
+        return;
+      }
+      if (_shouldSkipWebRequest()) {
+        _logWebSkip();
         return;
       }
       final payload = <String, dynamic>{

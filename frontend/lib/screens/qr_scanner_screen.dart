@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_mess/providers/unified_auth_provider.dart';
 import 'package:smart_mess/services/attendance_service.dart';
@@ -18,7 +19,7 @@ class QRScannerScreen extends StatefulWidget {
   State<QRScannerScreen> createState() => _QRScannerScreenState();
 }
 
-class _QRScannerScreenState extends State<QRScannerScreen> {
+class _QRScannerScreenState extends State<QRScannerScreen> with WidgetsBindingObserver {
   late MobileScannerController cameraController;
   final AttendanceService _attendanceService = AttendanceService();
   bool _isProcessing = false;
@@ -26,7 +27,14 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
   bool _isSuccess = false;
   String? _enrollmentId;
   bool _isStartingCamera = false;
+  bool _isRequestingPermission = false;
   String? _cameraError;
+  PermissionStatus? _cameraPermissionStatus;
+
+  bool get _cameraPermissionGranted {
+    final status = _cameraPermissionStatus;
+    return status == PermissionStatus.granted || status == PermissionStatus.limited;
+  }
 
   bool get _isSecureContext {
     if (!kIsWeb) {
@@ -40,18 +48,39 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     cameraController = MobileScannerController(
       formats: const [BarcodeFormat.qrCode],
       returnImage: false,
-      autoStart: true,
+      autoStart: false,
       facing: CameraFacing.back,
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _bootstrapCamera();
+    });
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     cameraController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!mounted) {
+      return;
+    }
+    if (state == AppLifecycleState.resumed) {
+      if (_cameraPermissionGranted) {
+        _startCameraPreview();
+      } else if (!kIsWeb) {
+        _requestPermissionAndStart();
+      }
+    } else if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
+      cameraController.stop();
+    }
   }
 
   void _handleBarcode(BarcodeCapture capture) async {
@@ -236,7 +265,104 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
     return DateTime.now().isBefore(expiresAt);
   }
 
-  Future<void> _startCamera() async {
+  Future<void> _bootstrapCamera() async {
+    if (kIsWeb && !_isSecureContext) {
+      setState(() {
+        _cameraError = 'Camera access requires HTTPS or localhost.';
+      });
+      return;
+    }
+
+    try {
+      final status = await Permission.camera.status;
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _cameraPermissionStatus = status;
+      });
+      if (_cameraPermissionGranted) {
+        await _startCameraPreview();
+      } else if (!kIsWeb) {
+        await _requestPermissionAndStart();
+      }
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _cameraError = 'Unable to check camera permissions.';
+      });
+    }
+  }
+
+  String _permissionMessage(PermissionStatus status) {
+    if (status.isPermanentlyDenied || status.isRestricted) {
+      return kIsWeb
+          ? 'Camera access is blocked in browser settings. Allow access and refresh.'
+          : 'Camera permission is blocked. Open settings to allow access.';
+    }
+    if (status.isDenied) {
+      return kIsWeb
+          ? 'Camera permission denied. Click below and allow access in your browser.'
+          : 'Camera permission denied. Tap below to allow access.';
+    }
+    return 'Camera permission not granted.';
+  }
+
+  Future<void> _requestPermissionAndStart() async {
+    if (_isRequestingPermission || _isStartingCamera) {
+      return;
+    }
+
+    if (kIsWeb && !_isSecureContext) {
+      setState(() {
+        _cameraError = 'Camera access requires HTTPS or localhost.';
+      });
+      return;
+    }
+
+    setState(() {
+      _isRequestingPermission = true;
+      _cameraError = null;
+    });
+
+    PermissionStatus status;
+    try {
+      status = await Permission.camera.status;
+      if (!status.isGranted && !status.isLimited) {
+        status = await Permission.camera.request();
+      }
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _cameraError = 'Unable to request camera permission.';
+        _isRequestingPermission = false;
+      });
+      return;
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _cameraPermissionStatus = status;
+      _isRequestingPermission = false;
+    });
+
+    if (_cameraPermissionGranted) {
+      await _startCameraPreview();
+    } else {
+      setState(() {
+        _cameraError = _permissionMessage(status);
+      });
+    }
+  }
+
+  Future<void> _startCameraPreview() async {
     if (_isStartingCamera) {
       return;
     }
@@ -245,38 +371,44 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
       _cameraError = null;
     });
 
-    if (kIsWeb && !_isSecureContext) {
-      setState(() {
-        _cameraError = 'Camera access requires HTTPS or localhost.';
-        _isStartingCamera = false;
-      });
-      return;
-    }
-
     try {
-      final args = await cameraController.start();
+      await cameraController.start();
       if (!mounted) {
         return;
       }
       setState(() {
-        if (args != null) {
-          _cameraError = null;
-        }
-        _isStartingCamera = false;
+        _cameraError = null;
       });
-    } catch (e) {
+    } catch (_) {
       if (!mounted) {
         return;
       }
       setState(() {
         _cameraError = 'Unable to start camera. Check permissions and try again.';
-        _isStartingCamera = false;
       });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isStartingCamera = false;
+        });
+      }
     }
   }
 
-  Widget _buildWebCameraGate() {
-    final canStartCamera = _isSecureContext;
+  Widget _buildCameraGate() {
+    final status = _cameraPermissionStatus;
+    final isSecure = _isSecureContext;
+    final isPermissionBlocked = status?.isPermanentlyDenied == true || status?.isRestricted == true;
+    final canRequestCamera = !isPermissionBlocked && (!kIsWeb || isSecure);
+    final infoText = _cameraError ??
+        (kIsWeb && !isSecure
+            ? 'Camera access on web requires HTTPS or localhost.'
+            : status == null
+                ? 'We need camera access to scan QR codes.'
+                : _cameraPermissionGranted
+                    ? 'Starting camera...'
+                    : _permissionMessage(status));
+
     return Container(
       color: Colors.black.withValues(alpha: 0.85),
       child: Center(
@@ -299,23 +431,13 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                canStartCamera
-                    ? 'Click the button below and allow camera access in your browser.'
-                    : 'Camera access on web requires HTTPS or localhost.',
+                infoText,
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 12, color: Colors.black54),
               ),
-              if (_cameraError != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  _cameraError ?? '',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 12, color: Colors.red),
-                ),
-              ],
               const SizedBox(height: 16),
               ElevatedButton.icon(
-                icon: _isStartingCamera
+                icon: (_isRequestingPermission || _isStartingCamera)
                     ? const SizedBox(
                         width: 16,
                         height: 16,
@@ -325,9 +447,21 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                         ),
                       )
                     : const Icon(Icons.play_arrow),
-                label: Text(_isStartingCamera ? 'Starting...' : 'Start Camera'),
-                onPressed: (!canStartCamera || _isStartingCamera) ? null : _startCamera,
+                label: Text(
+                  (_isRequestingPermission || _isStartingCamera) ? 'Starting...' : 'Enable Camera',
+                ),
+                onPressed: (!canRequestCamera || _isRequestingPermission || _isStartingCamera)
+                    ? null
+                    : _requestPermissionAndStart,
               ),
+              if (!kIsWeb && isPermissionBlocked) ...[
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  icon: const Icon(Icons.settings),
+                  label: const Text('Open Settings'),
+                  onPressed: openAppSettings,
+                ),
+              ],
             ],
           ),
         ),
@@ -361,10 +495,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
             controller: cameraController,
             onDetect: _handleBarcode,
             placeholderBuilder: (context, child) {
-              if (kIsWeb) {
-                return _buildWebCameraGate();
-              }
-              return Container(color: Colors.black);
+              return _buildCameraGate();
             },
             errorBuilder: (context, error, child) {
               return Container(
@@ -393,7 +524,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                       ),
                       const SizedBox(height: 24),
                       ElevatedButton(
-                        onPressed: () => cameraController.start(),
+                        onPressed: _requestPermissionAndStart,
                         child: const Text('Retry'),
                       ),
                     ],
