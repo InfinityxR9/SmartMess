@@ -2,6 +2,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:smart_mess/services/review_service.dart';
 import 'package:smart_mess/utils/meal_time.dart';
+import 'package:smart_mess/theme/app_tokens.dart';
+import 'package:smart_mess/widgets/empty_state.dart';
+import 'package:smart_mess/widgets/skeleton_loader.dart';
+import 'package:smart_mess/widgets/staggered_fade_in.dart';
 
 class ReviewsTab extends StatefulWidget {
   final String messId;
@@ -81,6 +85,7 @@ class _ReviewsTabState extends State<ReviewsTab> {
   @override
   Widget build(BuildContext context) {
     final slot = _currentSlot;
+    final textTheme = Theme.of(context).textTheme;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -91,7 +96,7 @@ class _ReviewsTabState extends State<ReviewsTab> {
               children: [
                 Icon(
                   slot == null ? Icons.access_time : Icons.restaurant,
-                  color: const Color(0xFF6200EE),
+                  color: AppColors.primary,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -99,7 +104,7 @@ class _ReviewsTabState extends State<ReviewsTab> {
                     slot == null
                         ? 'Outside meal hours. Reviews show only during meal slots.'
                         : 'Current Slot: ${slot.label} (${slot.window})',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                    style: textTheme.titleSmall,
                   ),
                 ),
               ],
@@ -108,61 +113,78 @@ class _ReviewsTabState extends State<ReviewsTab> {
         ),
         const SizedBox(height: 20),
         if (slot == null)
-          const Text('No reviews available outside meal hours')
+          const EmptyStateCard(
+            icon: Icons.schedule,
+            title: 'No reviews right now',
+            message: 'Reviews appear during active meal slots.',
+          )
         else
           FutureBuilder<List<Map<String, dynamic>>>(
             future: _reviews,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
+                return const SkeletonList(itemCount: 2, lineCount: 2);
               }
 
               final reviews = snapshot.data ?? [];
               if (reviews.isEmpty) {
-                return const Text('No reviews yet for this slot');
+                return const EmptyStateCard(
+                  icon: Icons.rate_review_outlined,
+                  title: 'No reviews yet',
+                  message: 'Be the first to share feedback for this meal.',
+                );
               }
 
               return Column(
-                children: reviews.map((reviewData) {
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text(
-                                'Anonymous',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              Row(
-                                children: List.generate(
-                                  5,
-                                  (i) => Icon(
-                                    Icons.star,
-                                    size: 16,
-                                    color: i < (reviewData['rating'] as int? ?? 0)
-                                        ? Colors.amber
-                                        : Colors.grey,
+                children: reviews.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final reviewData = entry.value;
+                  return StaggeredFadeIn(
+                    index: index,
+                    child: Card(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Anonymous',
+                                  style: textTheme.titleSmall,
+                                ),
+                                Row(
+                                  children: List.generate(
+                                    5,
+                                    (i) => Icon(
+                                      Icons.star,
+                                      size: 16,
+                                      color: i < (reviewData['rating'] as int? ?? 0)
+                                          ? AppColors.secondary
+                                          : AppColors.outlineSubtle,
+                                    ),
                                   ),
                                 ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              reviewData['comment'] ?? '',
+                              style: textTheme.bodyMedium?.copyWith(
+                                color: AppColors.inkMuted,
                               ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            reviewData['comment'] ?? '',
-                            style: TextStyle(color: Colors.grey[700]),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _formatMarkedTime(reviewData['submittedAt']),
-                            style: const TextStyle(fontSize: 10, color: Colors.grey),
-                          ),
-                        ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _formatMarkedTime(reviewData['submittedAt']),
+                              style: textTheme.bodySmall?.copyWith(
+                                color: AppColors.inkMuted,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   );
@@ -174,3 +196,4 @@ class _ReviewsTabState extends State<ReviewsTab> {
     );
   }
 }
+

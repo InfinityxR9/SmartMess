@@ -249,7 +249,7 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
               Card(
                 elevation: 1,
                 child: ListTile(
-                  leading: const Icon(Icons.calendar_today, color: Color(0xFF6200EE)),
+                  leading: const Icon(Icons.calendar_today, color: Color(0xFF0B3954)),
                   title: const Text('Select Date'),
                   subtitle: Text(_formatReadableDate(_selectedDate)),
                   onTap: _pickDate,
@@ -296,12 +296,12 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
               const SizedBox(height: 16),
               if (_hasCustomOverride)
                 Card(
-                  color: Colors.orange.shade50,
+                  color: const Color(0xFFFFB703).withValues(alpha: 0.12),
                   child: Padding(
                     padding: const EdgeInsets.all(12),
                     child: Text(
                       'A custom menu already exists for this date and meal. Saving will replace it.',
-                      style: TextStyle(color: Colors.orange.shade900, fontSize: 12),
+                      style: const TextStyle(color: Color(0xFFB45309), fontSize: 12),
                     ),
                   ),
                 ),
@@ -342,17 +342,23 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: _isSuccess ? Colors.green.shade50 : Colors.red.shade50,
+                    color: _isSuccess
+                        ? const Color(0xFF2A9D8F).withValues(alpha: 0.12)
+                        : const Color(0xFFE63946).withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: _isSuccess ? Colors.green.shade200 : Colors.red.shade200,
+                      color: _isSuccess
+                          ? const Color(0xFF2A9D8F).withValues(alpha: 0.35)
+                          : const Color(0xFFE63946).withValues(alpha: 0.35),
                     ),
                   ),
                   child: Row(
                     children: [
                       Icon(
                         _isSuccess ? Icons.check_circle : Icons.error_outline,
-                        color: _isSuccess ? Colors.green : Colors.red,
+                        color: _isSuccess
+                            ? const Color(0xFF2A9D8F)
+                            : const Color(0xFFE63946),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -360,8 +366,8 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
                           _message!,
                           style: TextStyle(
                             color: _isSuccess
-                                ? Colors.green.shade900
-                                : Colors.red.shade900,
+                                ? const Color(0xFF1B6F64)
+                                : const Color(0xFF9B1C1F),
                             fontSize: 14,
                           ),
                         ),
@@ -376,7 +382,7 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
                 onPressed: _isSaving ? null : _saveMenu,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 12),
-                  backgroundColor: const Color(0xFF6200EE),
+                  backgroundColor: const Color(0xFF0B3954),
                 ),
               ),
             ],
@@ -386,3 +392,4 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
     );
   }
 }
+

@@ -34,13 +34,13 @@ class _MessSelectionScreenState extends State<MessSelectionScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  const Icon(Icons.error_outline, size: 64, color: Color(0xFFE63946)),
                   SizedBox(height: 16),
                   Text('Error Loading Messes'),
                   SizedBox(height: 8),
                   Text(messProvider.error!,
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.red, fontSize: 12)),
+                      style: const TextStyle(color: Color(0xFFE63946), fontSize: 12)),
                   SizedBox(height: 24),
                   ElevatedButton(
                     onPressed: () {
@@ -87,7 +87,7 @@ class _MessSelectionScreenState extends State<MessSelectionScreen> {
               return Card(
                 margin: EdgeInsets.only(bottom: 12),
                 child: ListTile(
-                  leading: Icon(Icons.location_on, color: Color(0xFF6200EE)),
+                  leading: Icon(Icons.location_on, color: Color(0xFF0B3954)),
                   title: Text(
                     mess.name,
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
@@ -109,3 +109,4 @@ class _MessSelectionScreenState extends State<MessSelectionScreen> {
     );
   }
 }
+

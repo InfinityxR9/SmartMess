@@ -140,17 +140,17 @@ class _QRGeneratorScreenState extends State<QRGeneratorScreen> {
                 Container(
                   padding: EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.red.shade100,
+                    color: const Color(0xFFE63946).withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Column(
                     children: [
-                      Icon(Icons.error_outline, size: 48, color: Colors.red),
+                      const Icon(Icons.error_outline, size: 48, color: Color(0xFFE63946)),
                       SizedBox(height: 12),
                       Text(
                         _error!,
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.red, fontSize: 16),
+                        style: const TextStyle(color: Color(0xFFE63946), fontSize: 16),
                       ),
                       SizedBox(height: 16),
                       ElevatedButton(
@@ -228,16 +228,18 @@ class _QRGeneratorScreenState extends State<QRGeneratorScreen> {
                 Container(
                   padding: EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
+                    color: const Color(0xFF17BEBB).withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.blue.shade200),
+                    border: Border.all(
+                      color: const Color(0xFF17BEBB).withValues(alpha: 0.4),
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.info, color: Colors.blue.shade700),
+                          const Icon(Icons.info, color: Color(0xFF0F766E)),
                           SizedBox(width: 12),
                           Expanded(
                             child: Text(
@@ -245,7 +247,7 @@ class _QRGeneratorScreenState extends State<QRGeneratorScreen> {
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.blue.shade700,
+                                color: Color(0xFF0F766E),
                               ),
                             ),
                           ),
@@ -259,7 +261,7 @@ class _QRGeneratorScreenState extends State<QRGeneratorScreen> {
                         '4. A fresh QR is generated automatically after expiry',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.blue.shade900,
+                          color: Color(0xFF0B3954),
                           height: 1.6,
                         ),
                       ),
@@ -273,7 +275,7 @@ class _QRGeneratorScreenState extends State<QRGeneratorScreen> {
                   onPressed: _generateQR,
                   style: ElevatedButton.styleFrom(
                     padding: EdgeInsets.symmetric(vertical: 12),
-                    backgroundColor: Color(0xFF6200EE),
+                    backgroundColor: Color(0xFF0B3954),
                   ),
                 ),
                 SizedBox(height: 12),
@@ -355,4 +357,5 @@ class _QRGeneratorScreenState extends State<QRGeneratorScreen> {
     );
   }
 }
+
 

@@ -36,11 +36,11 @@ class _SplashScreenState extends State<SplashScreen> {
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF6200EE), Color(0xFF03DAC6)],
-          ),
+          gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF0B3954), Color(0xFFFFB703)],
+            ),
         ),
         child: Center(
           child: Column(
@@ -88,3 +88,4 @@ class _SplashScreenState extends State<SplashScreen> {
     );
   }
 }
+

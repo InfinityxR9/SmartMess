@@ -8,6 +8,7 @@ FIX THE BUG ASAP
 
 3) the whole project should be written in a manner that it is viable for the PRODUCTION and not just for DEVELOPMENT, cross check each and every line of code of this project and make sure
 FIX THE BUG ASAP
+only for web frontend and backend
 
 4) mobile_scanner: not starting automatically because autoStart is set to false in the controller.
 after giving permission to the browser, then also the camera is not starting and working as required 

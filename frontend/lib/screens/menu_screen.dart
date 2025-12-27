@@ -119,10 +119,10 @@ class _MenuScreenState extends State<MenuScreen> {
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF6200EE), Color(0xFF03DAC6)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+                  colors: [Color(0xFF0B3954), Color(0xFFFFB703)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
               borderRadius: BorderRadius.circular(18),
             ),
             child: Row(
@@ -171,12 +171,12 @@ class _MenuScreenState extends State<MenuScreen> {
           if (note != null && note.isNotEmpty) ...[
             const SizedBox(height: 8),
             Card(
-              color: Colors.blue.shade50,
+              color: const Color(0xFF17BEBB).withValues(alpha: 0.12),
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: Text(
                   note,
-                  style: TextStyle(color: Colors.blue.shade900, fontSize: 12),
+                  style: const TextStyle(color: Color(0xFF0B3954), fontSize: 12),
                 ),
               ),
             ),
@@ -263,3 +263,4 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 }
+

@@ -211,7 +211,7 @@ class _AttendanceViewScreenState extends State<AttendanceViewScreen> {
                         margin: const EdgeInsets.only(bottom: 8),
                         child: ListTile(
                           leading: CircleAvatar(
-                            backgroundColor: Colors.purple.shade200,
+                            backgroundColor: const Color(0xFFFFD166),
                             child: Text((index + 1).toString()),
                           ),
                           title: Text(student['studentName']?.toString() ?? 'Anonymous'),

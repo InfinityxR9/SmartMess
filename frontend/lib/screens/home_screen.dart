@@ -39,14 +39,14 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  const Icon(Icons.error_outline, size: 64, color: Color(0xFFE63946)),
                   SizedBox(height: 16),
                   Text('Error'),
                   SizedBox(height: 8),
                   Text(
                     authProvider.error!,
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.red, fontSize: 14),
+                    style: const TextStyle(color: Color(0xFFE63946), fontSize: 14),
                   ),
                   SizedBox(height: 24),
                   ElevatedButton(
@@ -106,7 +106,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ? Icons.person
                                       : Icons.admin_panel_settings,
                                   size: 40,
-                                  color: Color(0xFF6200EE),
+                                  color: Color(0xFF0B3954),
                                 ),
                                 SizedBox(width: 16),
                                 Expanded(
@@ -164,7 +164,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             SizedBox(height: 16),
                             Row(
                               children: [
-                                Icon(Icons.restaurant, color: Color(0xFF6200EE)),
+                                Icon(Icons.restaurant, color: Color(0xFF0B3954)),
                                 SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
@@ -192,7 +192,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             SizedBox(height: 12),
                             Row(
                               children: [
-                                Icon(Icons.code, color: Color(0xFF6200EE)),
+                                Icon(Icons.code, color: Color(0xFF0B3954)),
                                 SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
@@ -220,7 +220,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             SizedBox(height: 12),
                             Row(
                               children: [
-                                Icon(Icons.badge, color: Color(0xFF6200EE)),
+                                Icon(Icons.badge, color: Color(0xFF0B3954)),
                                 SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
@@ -248,7 +248,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             SizedBox(height: 12),
                             Row(
                               children: [
-                                Icon(Icons.email, color: Color(0xFF6200EE)),
+                                Icon(Icons.email, color: Color(0xFF0B3954)),
                                 SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
@@ -299,7 +299,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           _buildActionCard(
                             icon: Icons.qr_code_scanner,
                             title: 'Mark Attendance',
-                            color: Color(0xFF6200EE),
+                            color: Color(0xFF0B3954),
                             onTap: () {
                               final slot = getCurrentMealSlot();
                               if (slot == null) {
@@ -324,7 +324,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           _buildActionCard(
                             icon: Icons.star,
                             title: 'Submit Review',
-                            color: Color(0xFFFF6B6B),
+                            color: Color(0xFFE63946),
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
@@ -336,7 +336,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           _buildActionCard(
                             icon: Icons.restaurant_menu,
                             title: 'View Menu',
-                            color: Color(0xFF03DAC6),
+                            color: Color(0xFF17BEBB),
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
@@ -380,7 +380,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           _buildActionCard(
                             icon: Icons.show_chart,
                             title: 'Prediction + Analysis',
-                            color: Color(0xFF6200EE),
+                            color: Color(0xFF0B3954),
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
@@ -394,7 +394,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           _buildActionCard(
                             icon: Icons.qr_code,
                             title: 'Generate QR',
-                            color: Color(0xFF6200EE),
+                            color: Color(0xFF0B3954),
                             onTap: () {
                               final slot = getCurrentMealSlot();
                               if (slot == null) {
@@ -419,7 +419,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           _buildActionCard(
                             icon: Icons.checklist,
                             title: 'Mark Attendance',
-                            color: Color(0xFFFF6B6B),
+                            color: Color(0xFFE63946),
                             onTap: () {
                               final slot = getCurrentMealSlot();
                               if (slot == null) {
@@ -443,7 +443,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           _buildActionCard(
                             icon: Icons.menu_book,
                             title: 'Create Menu',
-                            color: Color(0xFF03DAC6),
+                            color: Color(0xFF17BEBB),
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
@@ -469,7 +469,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         icon: Icon(Icons.logout),
                         label: Text('Logout'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
+                          backgroundColor: const Color(0xFFE63946),
                           padding: EdgeInsets.symmetric(vertical: 12),
                         ),
                       ),
@@ -538,3 +538,4 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
+

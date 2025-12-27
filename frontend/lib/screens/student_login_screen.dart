@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_mess/providers/unified_auth_provider.dart';
+import 'package:smart_mess/theme/app_tokens.dart';
+import 'package:smart_mess/widgets/primary_action_button.dart';
 
 class StudentLoginScreen extends StatefulWidget {
   const StudentLoginScreen({Key? key}) : super(key: key);
@@ -75,11 +77,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
             child: Container(
               height: MediaQuery.of(context).size.height,
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFF6200EE), Color(0xFF03DAC6)],
-                ),
+                gradient: AppGradients.primary,
               ),
               child: Center(
                 child: Padding(
@@ -110,17 +108,17 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                         Container(
                           padding: EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.red.shade100,
-                            borderRadius: BorderRadius.circular(8),
+                            color: AppColors.danger.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(AppRadii.sm),
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.error_outline, color: Colors.red),
+                              const Icon(Icons.error_outline, color: AppColors.danger),
                               SizedBox(width: 12),
                               Expanded(
                                 child: Text(
                                   authProvider.error!,
-                                  style: TextStyle(color: Colors.red),
+                                  style: const TextStyle(color: AppColors.danger),
                                 ),
                               ),
                             ],
@@ -167,35 +165,12 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                       // Login button
                       SizedBox(
                         width: double.infinity,
-                        height: 50,
-                        child: ElevatedButton(
+                        child: PrimaryActionButton(
+                          label: 'Login as Student',
                           onPressed: authProvider.isLoading
                               ? null
                               : () => _handleLogin(context, authProvider),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Color(0xFF6200EE),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: authProvider.isLoading
-                              ? SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.white,
-                                    ),
-                                  ),
-                                )
-                              : Text(
-                                  'Login as Student',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
+                          isLoading: authProvider.isLoading,
                         ),
                       ),
                       SizedBox(height: 24),
@@ -222,3 +197,4 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
     );
   }
 }
+

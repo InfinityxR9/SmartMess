@@ -456,7 +456,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> with WidgetsBindingOb
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.camera_alt, size: 48, color: Color(0xFF6200EE)),
+              const Icon(Icons.camera_alt, size: 48, color: Color(0xFF0B3954)),
               const SizedBox(height: 16),
               const Text(
                 'Enable Camera to Scan',
@@ -509,7 +509,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> with WidgetsBindingOb
       appBar: AppBar(
         title: Text('Scan QR - ${widget.mealType.toUpperCase()}'),
         elevation: 0,
-        backgroundColor: const Color(0xFF6200EE),
+        backgroundColor: const Color(0xFF0B3954),
         actions: [
           if (kIsWeb)
             IconButton(
@@ -540,7 +540,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> with WidgetsBindingOb
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                      const Icon(Icons.error_outline, size: 64, color: Color(0xFFE63946)),
                       const SizedBox(height: 16),
                       const Text(
                         'Camera Error',
@@ -596,7 +596,9 @@ class _QRScannerScreenState extends State<QRScannerScreen> with WidgetsBindingOb
                 child: Container(
                   padding: const EdgeInsets.all(32),
                   decoration: BoxDecoration(
-                    color: _isSuccess ? Colors.green : Colors.red,
+                    color: _isSuccess
+                        ? const Color(0xFF2A9D8F)
+                        : const Color(0xFFE63946),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Column(
@@ -699,3 +701,4 @@ class _QRScannerScreenState extends State<QRScannerScreen> with WidgetsBindingOb
     );
   }
 }
+

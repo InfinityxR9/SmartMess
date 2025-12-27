@@ -65,10 +65,6 @@ flutter:
     - assets/menu_data.json
 
   fonts:
-    - family: Roboto
+    - family: SpaceGrotesk
       fonts:
-        - asset: assets/fonts/Roboto-Regular.ttf
-        - asset: assets/fonts/Roboto-Bold.ttf
-          weight: 700
-        - asset: assets/fonts/Roboto-Medium.ttf
-          weight: 500
+        - asset: assets/fonts/SpaceGrotesk-Variable.ttf

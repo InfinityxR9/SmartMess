@@ -130,7 +130,7 @@ class _RatingScreenState extends State<RatingScreen> {
       appBar: AppBar(
         title: const Text('Share Your Feedback'),
         elevation: 0,
-        backgroundColor: const Color(0xFF6200EE),
+        backgroundColor: const Color(0xFF0B3954),
       ),
       body: SingleChildScrollView(
         child: Container(
@@ -140,7 +140,9 @@ class _RatingScreenState extends State<RatingScreen> {
             children: [
               Card(
                 elevation: 2,
-                color: canSubmit ? Colors.green.shade50 : Colors.orange.shade50,
+                color: canSubmit
+                    ? const Color(0xFF2A9D8F).withValues(alpha: 0.12)
+                    : const Color(0xFFF4A261).withValues(alpha: 0.15),
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   child: Column(
@@ -148,7 +150,9 @@ class _RatingScreenState extends State<RatingScreen> {
                       Icon(
                         canSubmit ? Icons.check_circle : Icons.access_time,
                         size: 48,
-                        color: canSubmit ? Colors.green : Colors.orange,
+                        color: canSubmit
+                            ? const Color(0xFF2A9D8F)
+                            : const Color(0xFFF4A261),
                       ),
                       const SizedBox(height: 12),
                       Text(
@@ -157,7 +161,9 @@ class _RatingScreenState extends State<RatingScreen> {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: canSubmit ? Colors.green : Colors.orange,
+                          color: canSubmit
+                              ? const Color(0xFF2A9D8F)
+                              : const Color(0xFFF4A261),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -202,7 +208,9 @@ class _RatingScreenState extends State<RatingScreen> {
                             child: Icon(
                               Icons.star,
                               size: 40,
-                              color: index < _rating.toInt() ? Colors.amber : Colors.grey[300],
+                              color: index < _rating.toInt()
+                                  ? const Color(0xFFFFB703)
+                                  : Colors.grey[300],
                             ),
                           );
                         }),
@@ -258,16 +266,22 @@ class _RatingScreenState extends State<RatingScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: _isSuccess ? Colors.green.shade50 : Colors.red.shade50,
+                    color: _isSuccess
+                        ? const Color(0xFF2A9D8F).withValues(alpha: 0.12)
+                        : const Color(0xFFE63946).withValues(alpha: 0.12),
                     border: Border.all(
-                      color: _isSuccess ? Colors.green : Colors.red,
+                      color: _isSuccess
+                          ? const Color(0xFF2A9D8F)
+                          : const Color(0xFFE63946),
                     ),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     _message!,
                     style: TextStyle(
-                      color: _isSuccess ? Colors.green : Colors.red,
+                      color: _isSuccess
+                          ? const Color(0xFF2A9D8F)
+                          : const Color(0xFFE63946),
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -278,7 +292,7 @@ class _RatingScreenState extends State<RatingScreen> {
                 child: ElevatedButton(
                   onPressed: canSubmit && !_isSubmitting ? _submitReview : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6200EE),
+                    backgroundColor: const Color(0xFF0B3954),
                     disabledBackgroundColor: Colors.grey[300],
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
@@ -307,3 +321,4 @@ class _RatingScreenState extends State<RatingScreen> {
     );
   }
 }
+

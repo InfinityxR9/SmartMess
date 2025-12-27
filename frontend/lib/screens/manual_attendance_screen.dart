@@ -266,14 +266,14 @@ class _ManualAttendanceScreenState extends State<ManualAttendanceScreen> {
                               Container(
                                 padding: EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: Colors.blue.shade50,
+                                  color: const Color(0xFF17BEBB).withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
                                   'This will mark $_studentCount anonymous students as present',
                                   style: TextStyle(
                                     fontSize: 14,
-                                    color: Colors.blue.shade900,
+                                    color: const Color(0xFF0B3954),
                                   ),
                                 ),
                               ),
@@ -302,24 +302,32 @@ class _ManualAttendanceScreenState extends State<ManualAttendanceScreen> {
                 Container(
                   padding: EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: _isSuccess ? Colors.green.shade50 : Colors.red.shade50,
+                    color: _isSuccess
+                        ? const Color(0xFF2A9D8F).withValues(alpha: 0.12)
+                        : const Color(0xFFE63946).withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: _isSuccess ? Colors.green.shade200 : Colors.red.shade200,
+                      color: _isSuccess
+                          ? const Color(0xFF2A9D8F).withValues(alpha: 0.35)
+                          : const Color(0xFFE63946).withValues(alpha: 0.35),
                     ),
                   ),
                   child: Row(
                     children: [
                       Icon(
                         _isSuccess ? Icons.check_circle : Icons.error_outline,
-                        color: _isSuccess ? Colors.green : Colors.red,
+                        color: _isSuccess
+                            ? const Color(0xFF2A9D8F)
+                            : const Color(0xFFE63946),
                       ),
                       SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           _message!,
                           style: TextStyle(
-                            color: _isSuccess ? Colors.green.shade900 : Colors.red.shade900,
+                            color: _isSuccess
+                                ? const Color(0xFF1B6F64)
+                                : const Color(0xFF9B1C1F),
                             fontSize: 14,
                           ),
                         ),
