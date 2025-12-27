@@ -25,9 +25,17 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
   String? _message;
   bool _isSuccess = false;
   String? _enrollmentId;
-  bool _cameraStarted = !kIsWeb;
   bool _isStartingCamera = false;
   String? _cameraError;
+
+  bool get _isSecureContext {
+    if (!kIsWeb) {
+      return true;
+    }
+    final uri = Uri.base;
+    final host = uri.host;
+    return uri.scheme == 'https' || host == 'localhost' || host == '127.0.0.1';
+  }
 
   @override
   void initState() {
@@ -35,7 +43,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
     cameraController = MobileScannerController(
       formats: const [BarcodeFormat.qrCode],
       returnImage: false,
-      autoStart: !kIsWeb,
+      autoStart: true,
       facing: CameraFacing.back,
     );
   }
@@ -72,7 +80,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
           return;
         }
 
-        final qrData = barcode.rawValue ?? '';
+        final qrData = barcode.rawValue ?? barcode.displayValue ?? '';
         final decodedData = AttendanceService.decodeQrPayload(qrData);
 
         if (decodedData == null) {
@@ -135,7 +143,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
         final validationDate = (qrDate?.trim().isNotEmpty ?? false)
             ? qrDate!.trim()
             : DateTime.now().toIso8601String().split('T').first;
-        final validatedQR = await _attendanceService.validateQRCode(
+        var validatedQR = await _attendanceService.validateQRCode(
           messId: messId,
           mealType: mealType,
           qrCodeId: qrCodeId,
@@ -143,12 +151,16 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
         );
 
         if (validatedQR == null) {
-          setState(() {
-            _message = 'This QR code is no longer active. Please scan the latest QR.';
-            _isSuccess = false;
-            _isProcessing = false;
-          });
-          return;
+          if (_isQrPayloadActive(decodedData)) {
+            validatedQR = decodedData;
+          } else {
+            setState(() {
+              _message = 'This QR code is no longer active. Please scan the latest QR.';
+              _isSuccess = false;
+              _isProcessing = false;
+            });
+            return;
+          }
         }
 
         final generatedAt = validatedQR['generatedAt'] as String?;
@@ -212,6 +224,18 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
     }
   }
 
+  bool _isQrPayloadActive(Map<String, dynamic> payload) {
+    final expiresAtRaw = payload['expiresAt'] as String?;
+    if (expiresAtRaw == null || expiresAtRaw.trim().isEmpty) {
+      return false;
+    }
+    final expiresAt = DateTime.tryParse(expiresAtRaw);
+    if (expiresAt == null) {
+      return false;
+    }
+    return DateTime.now().isBefore(expiresAt);
+  }
+
   Future<void> _startCamera() async {
     if (_isStartingCamera) {
       return;
@@ -221,13 +245,23 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
       _cameraError = null;
     });
 
+    if (kIsWeb && !_isSecureContext) {
+      setState(() {
+        _cameraError = 'Camera access requires HTTPS or localhost.';
+        _isStartingCamera = false;
+      });
+      return;
+    }
+
     try {
       final args = await cameraController.start();
       if (!mounted) {
         return;
       }
       setState(() {
-        _cameraStarted = args != null;
+        if (args != null) {
+          _cameraError = null;
+        }
         _isStartingCamera = false;
       });
     } catch (e) {
@@ -242,6 +276,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
   }
 
   Widget _buildWebCameraGate() {
+    final canStartCamera = _isSecureContext;
     return Container(
       color: Colors.black.withValues(alpha: 0.85),
       child: Center(
@@ -263,10 +298,12 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Click the button below and allow camera access in your browser.',
+              Text(
+                canStartCamera
+                    ? 'Click the button below and allow camera access in your browser.'
+                    : 'Camera access on web requires HTTPS or localhost.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12, color: Colors.black54),
+                style: const TextStyle(fontSize: 12, color: Colors.black54),
               ),
               if (_cameraError != null) ...[
                 const SizedBox(height: 12),
@@ -289,7 +326,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                       )
                     : const Icon(Icons.play_arrow),
                 label: Text(_isStartingCamera ? 'Starting...' : 'Start Camera'),
-                onPressed: _isStartingCamera ? null : _startCamera,
+                onPressed: (!canStartCamera || _isStartingCamera) ? null : _startCamera,
               ),
             ],
           ),
@@ -323,6 +360,12 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
           MobileScanner(
             controller: cameraController,
             onDetect: _handleBarcode,
+            placeholderBuilder: (context, child) {
+              if (kIsWeb) {
+                return _buildWebCameraGate();
+              }
+              return Container(color: Colors.black);
+            },
             errorBuilder: (context, error, child) {
               return Container(
                 color: Colors.black,
@@ -463,10 +506,6 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                   ],
                 ),
               ),
-            ),
-          if (kIsWeb && !_cameraStarted && _message == null)
-            Positioned.fill(
-              child: _buildWebCameraGate(),
             ),
         ],
       ),

@@ -320,6 +320,14 @@ def train_mess_model(
                     current_time=current_time,
                 )
                 training_info['windowMinutes'] = minutes_back
+                if not attendance_records:
+                    attendance_records = load_attendance_records(
+                        mess_id=mess_id,
+                        meal_type=meal_type,
+                        days_back=days_back,
+                    )
+                    if attendance_records:
+                        training_info['fallbackDays'] = days_back
             else:
                 attendance_records = load_attendance_records(
                     mess_id=mess_id,
@@ -371,7 +379,7 @@ def predict():
         mess_id = data.get('messId')
         dev_mode = data.get('devMode', False)  # Allow predictions outside meal times in dev mode
         requested_slot = normalize_meal_type(data.get('slot') or data.get('mealType'))
-        force_train = bool(data.get('forceTrain', True))
+        force_train = bool(data.get('forceTrain', False))
         auto_train = bool(data.get('autoTrain', True))
         async_train = bool(data.get('asyncTrain', True))
         try:
@@ -549,6 +557,13 @@ def train_model():
             days_back = max(1, int(data.get('daysBack', 30)))
         except Exception:
             days_back = 30
+        try:
+            minutes_back = data.get('minutesBack')
+            minutes_back = int(minutes_back) if minutes_back is not None else None
+            if minutes_back is not None and minutes_back <= 0:
+                minutes_back = None
+        except Exception:
+            minutes_back = None
         
         if not mess_id:
             return jsonify({

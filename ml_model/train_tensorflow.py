@@ -7,6 +7,7 @@ Trains on mess-specific attendance data from Firebase
 import os
 import sys
 import json
+import inspect
 from collections import defaultdict
 from datetime import datetime, timedelta
 import firebase_admin
@@ -17,6 +18,50 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 import joblib
+
+_STREAM_SUPPORTS_TIMEOUT = None
+
+def _safe_stream(ref, timeout_s, label):
+    global _STREAM_SUPPORTS_TIMEOUT
+    if _STREAM_SUPPORTS_TIMEOUT is None:
+        try:
+            _STREAM_SUPPORTS_TIMEOUT = 'timeout' in inspect.signature(ref.stream).parameters
+        except Exception:
+            _STREAM_SUPPORTS_TIMEOUT = False
+    try:
+        if _STREAM_SUPPORTS_TIMEOUT:
+            return list(ref.stream(timeout=timeout_s))
+        return list(ref.stream())
+    except Exception as e:
+        print(f"[WARN] Firestore stream failed for {label}: {e}")
+        return []
+
+def _init_firestore_client():
+    """Initialize Firestore client with service account or ADC fallback."""
+    try:
+        if os.path.exists('serviceAccountKey.json'):
+            cred = credentials.Certificate('serviceAccountKey.json')
+        elif os.path.exists('../backend/serviceAccountKey.json'):
+            cred = credentials.Certificate('../backend/serviceAccountKey.json')
+        else:
+            try:
+                cred = credentials.ApplicationDefault()
+                print("[WARN] serviceAccountKey.json not found. Using application default credentials.")
+            except Exception as e:
+                print(f"[ERROR] Firebase credentials not found and ADC failed: {e}")
+                return None
+
+        try:
+            firebase_admin.get_app()
+        except ValueError:
+            firebase_admin.initialize_app(cred)
+
+        return firestore.client()
+    except Exception as e:
+        print(f"[ERROR] Firebase initialization failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
 
 class MessCrowdRegressor:
     """Simple regression model for predicting crowd using TensorFlow"""
@@ -66,10 +111,23 @@ class MessCrowdRegressor:
             try:
                 # Parse timestamp
                 marked_at = record.get('markedAt')
-                if isinstance(marked_at, str):
+                dt = None
+                if isinstance(marked_at, datetime):
+                    dt = marked_at
+                elif hasattr(marked_at, 'to_datetime'):
+                    try:
+                        dt = marked_at.to_datetime()
+                    except Exception:
+                        dt = None
+                elif isinstance(marked_at, str):
                     dt = datetime.fromisoformat(marked_at.replace('Z', '+00:00'))
                 else:
                     continue
+
+                if dt is None:
+                    continue
+                if dt.tzinfo is not None:
+                    dt = dt.astimezone(tz=None).replace(tzinfo=None)
                 
                 # Extract features
                 hour = dt.hour
@@ -188,28 +246,20 @@ def load_firebase_data(mess_id, days_back=7):
     Path: attendance/{mess_id}/{date}/{meal}/students
     """
     try:
-        # Initialize Firebase
-        if os.path.exists('serviceAccountKey.json'):
-            cred = credentials.Certificate('serviceAccountKey.json')
-        elif os.path.exists('../backend/serviceAccountKey.json'):
-            cred = credentials.Certificate('../backend/serviceAccountKey.json')
-        else:
-            print(f"[ERROR] Firebase credentials not found")
+        db = _init_firestore_client()
+        if db is None:
             return []
-        
-        # Initialize Firebase app if not already done
+
         try:
-            firebase_admin.initialize_app(cred)
-        except ValueError:
-            pass  # App already initialized
-        
-        db = firestore.client()
+            query_timeout_s = int(os.environ.get('FIRESTORE_QUERY_TIMEOUT', '30'))
+        except Exception:
+            query_timeout_s = 30
         attendance_records = []
         start_date = datetime.now() - timedelta(days=days_back)
         
         try:
             # Query mess-specific data: attendance/{mess_id}/{date}/{meal}/students
-            print(f"[QUERY] Querying Firebase for {mess_id}...")
+            print(f"[QUERY] Querying Firebase for {mess_id} (days_back={days_back}, timeout={query_timeout_s}s)...")
             mess_ref = db.collection('attendance').document(mess_id)
             
             # Get all dates for this mess
@@ -220,13 +270,15 @@ def load_firebase_data(mess_id, days_back=7):
             for day_offset in range(days_back):
                 check_date = datetime.now() - timedelta(days=day_offset)
                 date_str = check_date.strftime('%Y-%m-%d')
+                if day_offset == 0 or day_offset % 7 == 0:
+                    print(f"[QUERY] Scanning date: {date_str}")
                 
                 try:
                     # Try to access the date document
                     date_ref = mess_ref.collection(date_str)
                     
                     # Get all meals for this date
-                    meals = date_ref.stream()
+                    meals = _safe_stream(date_ref, query_timeout_s, f"{mess_id}/{date_str}")
                     
                     for meal_doc in meals:
                         meal_type = meal_doc.id
@@ -234,7 +286,11 @@ def load_firebase_data(mess_id, days_back=7):
                         try:
                             # Get students collection for this meal
                             students_ref = meal_doc.reference.collection('students')
-                            students = students_ref.stream()
+                            students = _safe_stream(
+                                students_ref,
+                                query_timeout_s,
+                                f"{mess_id}/{date_str}/{meal_type}/students",
+                            )
                             
                             for student_doc in students:
                                 student_data = student_doc.to_dict() or {}
@@ -242,6 +298,13 @@ def load_firebase_data(mess_id, days_back=7):
                                 # Extract record info
                                 enrollment_id = student_doc.id
                                 marked_at = student_data.get('markedAt')
+                                if hasattr(marked_at, 'to_datetime'):
+                                    try:
+                                        marked_at = marked_at.to_datetime()
+                                    except Exception:
+                                        pass
+                                if hasattr(marked_at, 'isoformat'):
+                                    marked_at = marked_at.isoformat()
                                 student_name = student_data.get('studentName', 'Unknown')
                                 marked_by = student_data.get('markedBy', 'unknown')
                                 
