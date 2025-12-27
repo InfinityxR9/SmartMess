@@ -1,51 +1,4 @@
-[NOT FOR DAKSH RATHI]
-Prediction API URL in frontend/lib/services/prediction_service.dart
-Cloud Run Endpoint after deployment
-SECRET_KEY=your-secret-key-here in .env.example
-
-Should Create
-backend/.env (from .env.example)
-Sample data in Firestore collections
-
-[FOR DAKSH RATHI]
-First, create a new branch and start working on it:
-open git bash in terminal in vs code
-it should say something like:
-
-daksh@... MINGW64 /.../SmartMess (master)
-master -> means you're on master branch
-
-use: git checkout -b develop 
-this will create a new branch 'develop' and switch to it,
-(Now, master would be replaced by 'develop')
-
-To start the servers:
-1) start the backend server 
-2) build the frontend
-3) start the frontend 
-you may take help from the snippets written below
-
-Before doing anything with the AI, you should run the servers and perform tests like adding/marking attendance, accessing reviews, accounts, authentication... check everything and make sure that everything is working fine.
-You may check the web console (you can access via Ctrl+shift+I), the terminals of the servers running for any errors, You see any unknown error whose cause you don't know, message me.
-
-I demonstrated the project when there were little to no errors at all (Just Logical Problems), so, I want before doing anything forward, your PC and mine are at same level, by checking everything is alright. (Don't hussle in this process, and do each and every debug testing calmly)
-
-I'm also adding your github registered email id (iamdakshrathi@gmail.com) to the viewer for firebase database, so that you may access it and look at the details for login and other things. You will not have edit permissions, if you want that, contact me.
-
-If you face any problem, CONTACT ME.
-
-Open the chat session, [NOTE: Do all these with the repo opened in the vscode (work in root directory)]
-select Claude Haiku 
-Paste the prompt in the chat (You can change some part of prompt, as explained below), if it asks for write, let it have it and don't undo if it asks after writing files, let it run scripts in terminals, if it asks so.
-
-The prompt above the text "----------- **PROBLEMS TO BE ADDRESSED** -----------------" in PROMPT.txt can be changed, it is meant to explain to the AI about our project, i've written some part, however you may change/add it.
-
-[IMPORTANT]
-You may need a serviceAccountKey.json file (it might throw errors regarding the connection is not there)
-If you feel like there're errors that weren't there when i demonstrated it, ask me directly.
-This file is never committed to the github, hence i posses it only.
-
-[TO RUN THE SERVERS]
+[TO RUN THE DEV SERVERS]
 SNIPPETS:
 run backend:
 
@@ -71,21 +24,13 @@ flutter run -d edge
 
 Add a proper "How to completely run project" in readme. that includes donwloading sdk, python.. etc, and installing dependencies, by means of creating venvs, etc..
 
-[PROBLEMS, FIX ALL OF THEM]
+[Hosting]
 
-- In managers section, the submitted feedback is not visible, additionally for students, make sure, during the specific slot timings, students can only submit review for that slot only and it is visible on the manager side only that slot data (breakfast, lunch, dinner), review is stored in database as reviews/<messId>/<date>/<slot>/items/<Id>, fetch the specific data for date and slot accordingly.
+[RENDER]
+Simply push changes and then deploy manually from that commit 
 
-- Attendance marked is not visible in the analytics section of manager, and make sure the visible attendance count is only for that day and that slot. in database, attendance is stored as: attendance/<messId>/<date>/<slot as dinner/breakfast/lunch>/students/<ID>, which has data, as {  enrollmentId: enrollmentId for students if given, otherwise random anonymous id,
-    markedAt: time, markedBy: manual/scanned, studentName: if given, otherwise anonymous}
+[FIREBASE]
+cd frontend
+flutter build web --dart-define=SMARTMESS_BACKEND_URL=https://smartmess-lx1a.onrender.com
 
-- In the students section, merge the analytics and prediction section.. the prediction service is not working, make sure on each visit of page, the model trains for the past data (that slot)
-
-- Review system not working, even when submitting within slot hours, this error is generated:
-[Review] Backend error: {"error":"Timeout of 60.0s exceeded, last exception: 503 Getting metadata from plugin failed with error: ('invalid_grant: Invalid JWT: Token must be a short-lived token (60 minutes) and in a reasonable timeframe. Check your iat and exp values in the JWT claim.', {'error': 'invalid_grant', 'error_description': 'Invalid JWT: Token must be a short-lived token (60 minutes) and in a reasonable timeframe. Check your iat and exp values in the JWT claim.'})"}
-
-MAKE SURE THE REVIEW SYSTEM IS WORKING COMPLETELY FINE and MAKE SURE YOU CAN'T SUBMIT THE LUNCH REVIEW IN BREAKFAST TIMINGS OR DINNER TIMINGS (MAKE SURE TIMING ISOLATION IS THERE)
-Additionally, the predictions are also not working.. You've made things worse, fix them ASAP
-
-- You can see the attendance in the show qr section, but make sure the attendance shown is of the same slot and same date, See, we need to show the attendance at three locations, at the QR code (Show attendance), only those marked by that QR code, second, at the analytics sections of the manager and third, the analytics and prediction section (Merged) of the student portal
-
-- All the analytics shown at the managers side should be visible to the students also, to enhance transparency.
+firebase deploy --only hosting
