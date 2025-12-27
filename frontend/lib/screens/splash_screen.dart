@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:smart_mess/theme/app_tokens.dart';
+import 'package:smart_mess/utils/logger.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({Key? key}) : super(key: key);
@@ -22,7 +24,7 @@ class _SplashScreenState extends State<SplashScreen> {
         await Navigator.of(context).pushReplacementNamed('/student_login');
       }
     } catch (e) {
-      print('[SplashScreen] Navigation error: $e');
+      logError('[SplashScreen] Navigation error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e')),
@@ -36,11 +38,7 @@ class _SplashScreenState extends State<SplashScreen> {
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF0B3954), Color(0xFFFFB703)],
-            ),
+          gradient: AppGradients.primary,
         ),
         child: Center(
           child: Column(

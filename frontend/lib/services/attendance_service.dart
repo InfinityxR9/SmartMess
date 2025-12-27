@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
+import 'package:smart_mess/utils/logger.dart';
 
 class AttendanceService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -168,10 +169,10 @@ class AttendanceService {
           .doc(mealType)
           .set(qrData);
 
-      print('[QR] Generated QR: $qrCodeId for $mealType');
+      logDebug('[QR] Generated QR: $qrCodeId for $mealType');
       return qrData;
     } catch (e) {
-      print('[QR] Error generating QR: $e');
+      logError('[QR] Error generating QR: $e');
       return null;
     }
   }
@@ -205,13 +206,13 @@ class AttendanceService {
 
       // Check if expired
       if (DateTime.now().isAfter(expiresAt)) {
-        print('[QR] QR code expired');
+        logDebug('[QR] QR code expired');
         return null;
       }
 
       return qrData;
     } catch (e) {
-      print('[QR] Error getting QR: $e');
+      logError('[QR] Error getting QR: $e');
       return null;
     }
   }
@@ -335,7 +336,7 @@ class AttendanceService {
               })
           .toList();
     } catch (e) {
-      print('[Attendance] Error getting attendance: $e');
+      logError('[Attendance] Error getting attendance: $e');
       return [];
     }
   }
@@ -363,7 +364,7 @@ class AttendanceService {
 
       return counts;
     } catch (e) {
-      print('[Attendance] Error getting count: $e');
+      logError('[Attendance] Error getting count: $e');
       return {};
     }
   }

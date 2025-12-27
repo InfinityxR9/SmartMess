@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../services/student_auth_service.dart';
 import '../services/manager_auth_service.dart';
+import 'package:smart_mess/utils/logger.dart';
 
 class UnifiedAuthProvider extends ChangeNotifier {
   final StudentAuthService _studentAuthService = StudentAuthService();
@@ -48,7 +49,7 @@ class UnifiedAuthProvider extends ChangeNotifier {
       _error = null;
       notifyListeners();
 
-      print('[UnifiedAuth] Student login attempt: $enrollmentId');
+      logDebug('[UnifiedAuth] Student login attempt: $enrollmentId');
 
       // Authenticate student
       final userData = await _studentAuthService.authenticateStudent(
@@ -90,14 +91,14 @@ class UnifiedAuthProvider extends ChangeNotifier {
       _isLoading = false;
       _error = null;
 
-      print('[UnifiedAuth] Student login successful: $_userName ($_messName)');
-      print('[UnifiedAuth] Student login successful: $_userName ($_messId)');
+      logDebug('[UnifiedAuth] Student login successful: $_userName ($_messName)');
+      logDebug('[UnifiedAuth] Student login successful: $_userName ($_messId)');
       notifyListeners();
       return true;
     } catch (e) {
       _error = 'Login error: $e';
       _isLoading = false;
-      print('[UnifiedAuth] Student login error: $e');
+      logError('[UnifiedAuth] Student login error: $e');
       notifyListeners();
       return false;
     }
@@ -110,7 +111,7 @@ class UnifiedAuthProvider extends ChangeNotifier {
       _error = null;
       notifyListeners();
 
-      print('[UnifiedAuth] Manager login attempt: $email');
+      logDebug('[UnifiedAuth] Manager login attempt: $email');
 
       // Authenticate manager
       final userData = await _managerAuthService.authenticateManager(email, password);
@@ -148,13 +149,13 @@ class UnifiedAuthProvider extends ChangeNotifier {
       _isLoading = false;
       _error = null;
 
-      print('[UnifiedAuth] Manager login successful: $_userName ($_messCode)');
+      logDebug('[UnifiedAuth] Manager login successful: $_userName ($_messCode)');
       notifyListeners();
       return true;
     } catch (e) {
       _error = 'Login error: $e';
       _isLoading = false;
-      print('[UnifiedAuth] Manager login error: $e');
+      logError('[UnifiedAuth] Manager login error: $e');
       notifyListeners();
       return false;
     }
@@ -172,7 +173,7 @@ class UnifiedAuthProvider extends ChangeNotifier {
       _messId = messId;
       // Note: In a real app, fetch mess details from database
       _error = null;
-      print('[UnifiedAuth] Switched to mess: $messId');
+      logDebug('[UnifiedAuth] Switched to mess: $messId');
       notifyListeners();
     } catch (e) {
       _error = 'Error switching mess: $e';
@@ -200,7 +201,7 @@ class UnifiedAuthProvider extends ChangeNotifier {
       _assignedMesses = [];
       _error = null;
 
-      print('[UnifiedAuth] User logged out');
+      logDebug('[UnifiedAuth] User logged out');
       notifyListeners();
     } catch (e) {
       _error = 'Logout error: $e';

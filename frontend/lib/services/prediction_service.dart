@@ -1,12 +1,17 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import 'package:smart_mess/models/prediction_model.dart';
+import 'package:smart_mess/utils/logger.dart';
 
 class PredictionService {
   // Use --dart-define=SMARTMESS_BACKEND_URL=... to override in production.
   static const String baseUrl =
       String.fromEnvironment('SMARTMESS_BACKEND_URL', defaultValue: 'http://localhost:8080');
+  static const bool allowDevMode =
+      bool.fromEnvironment('SMARTMESS_ALLOW_DEV_MODE', defaultValue: false);
+
+  bool get _devMode => kDebugMode || allowDevMode;
 
   bool _shouldSkipWebRequest() {
     if (!kIsWeb) return false;
@@ -32,7 +37,7 @@ class PredictionService {
   void _logWebSkip() {
     if (!kIsWeb) return;
     final pageUri = Uri.base;
-    print(
+    logDebug(
       '[Prediction] Backend URL is not configured for web hosting. '
       'Current page: ${pageUri.origin}, baseUrl: $baseUrl',
     );
@@ -65,7 +70,7 @@ class PredictionService {
       final normalizedSlot = _normalizeSlot(slot);
       final payload = <String, dynamic>{
         'messId': messId,
-        'devMode': true,
+        'devMode': _devMode,
         'forceTrain': forceTrain,
         'autoTrain': autoTrain,
         'asyncTrain': asyncTrain,
@@ -90,11 +95,11 @@ class PredictionService {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         return PredictionResult.fromJson(data);
       } else {
-        print('[Prediction] Backend returned ${response.statusCode}: ${response.body}');
+        logError('[Prediction] Backend returned ${response.statusCode}: ${response.body}');
         return null;
       }
     } catch (e) {
-      print('[Prediction] Error: $e');
+      logError('[Prediction] Error: $e');
       return null;
     }
   }
@@ -121,7 +126,7 @@ class PredictionService {
         'messId': messId,
         'daysBack': daysBack,
         'forceTrain': forceTrain,
-        'devMode': true,
+        'devMode': _devMode,
         'asyncTrain': asyncTrain,
       };
       if (normalizedSlot != null) {
@@ -141,14 +146,14 @@ class PredictionService {
           )
           .timeout(const Duration(seconds: 30));
       if (response.statusCode != 200) {
-        print('[Prediction] Train returned ${response.statusCode}: ${response.body}');
+        logError('[Prediction] Train returned ${response.statusCode}: ${response.body}');
         return false;
       }
       try {
         final data = jsonDecode(response.body);
         if (data is Map<String, dynamic>) {
           if (data['warning'] != null) {
-            print('[Prediction] Train warning: ${data['warning']}');
+            logDebug('[Prediction] Train warning: ${data['warning']}');
             return false;
           }
           final training = data['training'];
@@ -164,7 +169,7 @@ class PredictionService {
       }
       return true;
     } catch (e) {
-      print('[Prediction] Train error: $e');
+      logError('[Prediction] Train error: $e');
       return false;
     }
   }

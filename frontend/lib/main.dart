@@ -10,6 +10,7 @@ import 'package:smart_mess/screens/student_login_screen.dart';
 import 'package:smart_mess/screens/manager_login_screen.dart';
 import 'package:smart_mess/screens/home_screen.dart';
 import 'package:smart_mess/theme/app_tokens.dart';
+import 'package:smart_mess/utils/logger.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,7 +20,7 @@ void main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
   } catch (e) {
-    print('[Main] Firebase init error: $e');
+    logError('[Main] Firebase init error: $e');
   }
   runApp(const SmartMessApp());
 }

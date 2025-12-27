@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
+import 'package:smart_mess/utils/logger.dart';
 
 class ReviewService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -55,10 +56,10 @@ class ReviewService {
         'messId': messId
       });
       
-      print('[Review] Submitted successfully for $messId $dateStr $normalizedMealType');
+      logDebug('[Review] Submitted successfully for $messId $dateStr $normalizedMealType');
       return true;
     } catch (e) {
-      print('[Review] Error submitting review: $e');
+      logError('[Review] Error submitting review: $e');
       return false;
     }
   }
@@ -90,7 +91,7 @@ class ReviewService {
           .toList();
           
     } catch (e) {
-      print('[Review] Error getting reviews: $e');
+      logError('[Review] Error getting reviews: $e');
       return [];
     }
   }
@@ -106,7 +107,7 @@ class ReviewService {
       
       return await getMealReviews(messId: messId, mealType: currentMealType);
     } catch (e) {
-      print('[Review] Error getting mess reviews: $e');
+      logError('[Review] Error getting mess reviews: $e');
       return [];
     }
   }
@@ -135,7 +136,7 @@ class ReviewService {
           })
           .toList();
     } catch (e) {
-      print('[Review] Error getting reviews for $date/$slot: $e');
+      logError('[Review] Error getting reviews for $date/$slot: $e');
       return [];
     }
   }
@@ -155,7 +156,7 @@ class ReviewService {
 
       return totalRating / reviews.length;
     } catch (e) {
-      print('[Review] Error calculating average rating: $e');
+      logError('[Review] Error calculating average rating: $e');
       return 0.0;
     }
   }
