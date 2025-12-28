@@ -1,60 +1,42 @@
 # SmartMess
 
-SmartMess is a mess crowd management system that combines a Flutter web front end, a Flask prediction API, and optional ML models to help students and managers choose the best time to eat.
+> A mess crowd management system that combines a Flutter web UI, a Flask prediction API, and ML models to help students choose the best time to eat.
 
-**Version**: 2.0.0  
-**Status**: Production Ready ✅  
-**Last Updated**: 28-12-2025
+![Flutter](https://img.shields.io/badge/Flutter-Web-green)
+![Firebase](https://img.shields.io/badge/Firebase-Firestore-red)
+![Flask](https://img.shields.io/badge/Backend-Flask-blue)
+![Python](https://img.shields.io/badge/Python-3.10%2B-yellow)
+![TensorFlow](https://img.shields.io/badge/ML-TensorFlow-ff6f00)
 
-## Overview
+## Table of Contents
 
-SmartMess is an intelligent mess management system featuring:
-- 🧠 TensorFlow-based crowd prediction
-- 🔐 Mess-specific data isolation
-- 📊 Real-time attendance tracking
-- 🚀 Flutter mobile frontend
-- ☁️ Firebase backend
-- 📈 ML-powered predictions
+- [What it does](#what-it-does)
+- [Highlights](#highlights)
+- [Tech Stack](#tech-stack)
+- [System overview](#system-overview)
+- [Meal windows](#meal-windows)
+- [API](#api)
+- [Quick start](#quick-start)
+- [Reproduce the predictions flow](#reproduce-the-predictions-flow)
+- [Optional ML training](#optional-ml-training)
+- [Configuration](#configuration)
+- [Project structure](#project-structure)
+- [Team](#team)
+- [Learning Resource](#learning-resources)
+
+## What it does
+
+SmartMess provides real-time mess crowd visibility, attendance tracking, and meal-aware predictions. The UI surfaces the best time slots to visit the mess, while managers can review attendance, menus, and feedback.
 
 ## Highlights
 
-- Meal-aware crowd predictions (15-minute slots)
-- Real-time crowd dashboards and attendance tracking
-- QR-based check-ins and feedback collection
-- Manager and student portals
-- Firebase-backed data storage (auth, attendance, reviews, menus)
+- 15-minute slot predictions with best-slot recommendations
+- Student and manager dashboards
+- QR-based attendance capture
+- Menu and review tracking
+- ML-backed predictions when models are available, fallback logic otherwise
 
-## Core Features
-
-### 🧠 TensorFlow Crowd Prediction
-
-- **Mess-Specific Models**: Each mess (alder, oak, etc.) has its own trained model
-- **15-Minute Predictions**: Predicts crowd for upcoming 15-minute slots
-- **Meal-Time Awareness**: Breakfast (7:30-9:30), Lunch (11:00-15:00), Dinner (18:00-22:00)
-- **Confidence Scoring**: Returns prediction confidence levels
-- **Recommendations**: Good time, Moderate, or Avoid
-
-### 🔐 Data Isolation
-
-- No cross-contamination between messes
-- Each mess model trained on its own data only
-- Complete privacy and isolation
-
-### 📱 QR Code Integration: 
-- Quick entry logging with staff verification
-### ⭐ Feedback System: 
-- Real-time rating aggregation and display
-### 📋 Menu Management: 
-- Daily menu tracking and updates
-
-## Architecture
-
-- frontend/ - Flutter web UI
-- backend/ - Flask API for predictions and health checks
-- ml_model/ - Training scripts and model artifacts
-- Firebase - Auth and Firestore for app data
-
-## Technologies
+## Tech Stack
 
 | Component | Technology |
 |-----------|-----------|
@@ -64,13 +46,29 @@ SmartMess is an intelligent mess management system featuring:
 | Database | Firebase Firestore |
 | Deployment | Docker-ready |
 
+## System overview
+
+Data flow (high level):
+
+```
+Flutter Web UI -> Flask API (/predict) -> ML model -> Firebase (auth, attendance, reviews, menus)
+```
+
+## Meal windows
+
+- Breakfast: 07:30-09:30
+- Lunch: 12:00-14:00
+- Dinner: 19:30-21:30
+
+Predictions are generated for the current meal window. Outside these windows, the backend returns an empty list.
+
 ## API
 
 Base URL: `http://localhost:8080` by default.
 
 ### GET /health
 
-Returns service status.
+Returns backend service status.
 
 ### POST /predict
 
@@ -88,36 +86,44 @@ Response (shape):
 
 ```json
 {
-  "messId": "alder",
-  "mealType": "lunch",
   "capacity": 120,
+  "current_crowd": 60,
+  "current_percentage": 50.0,
+  "fallback": false,
+  "mealType": "lunch",
+  "messId": "alder",
   "predictions": [
     {
-      "time_slot": "12:15 PM",
-      "time_24h": "12:15",
-      "predicted_crowd": 40,
-      "crowd_percentage": 33.3,
+      "capacity": 120,
       "confidence": "low",
-      "recommendation": "Good time"
+      "crowd_percentage": 40.0,
+      "predicted_crowd": 48,
+      "recommendation": "Moderate crowd",
+      "time_24h": "13:30",
+      "time_slot": "01:30 PM"
+    },
+    {
+      "capacity": 120,
+      "confidence": "low",
+      "crowd_percentage": 46.0,
+      "predicted_crowd": 55,
+      "recommendation": "Moderate crowd",
+      "time_24h": "13:45",
+      "time_slot": "01:45 PM"
     }
   ],
-  "timestamp": "2025-01-01T12:00:00Z"
+  "source": "fallback",
+  "timestamp": "2025-12-28T07:58:07.009597"
 }
 ```
 
-## Meal Windows
-
-- Breakfast: 07:30-09:30
-- Lunch: 12:00-14:00
-- Dinner: 19:30-21:30
-
-## Local Development
+## Quick start
 
 ### Prerequisites
 
 - Flutter 3.x (Dart >= 3.0)
 - Python 3.10+
-- Firebase project for auth and Firestore (already configured in `frontend/lib/firebase_options.dart`)
+- Firebase project (configured in `frontend/lib/firebase_options.dart`)
 
 ### 1) Run the backend API
 
@@ -147,13 +153,14 @@ curl -X POST http://localhost:8080/predict \
   -d "{\"messId\":\"alder\",\"mealType\":\"lunch\",\"capacity\":120}"
 ```
 
-### 4) Reproduce the UI flow
+## Reproduce the predictions flow
 
-- Open the web app.
-- Navigate to the predictions section.
-- Confirm upcoming slot predictions render for the current meal.
+1. Start the backend and frontend.
+2. Open the web app.
+3. Navigate to the predictions section.
+4. Confirm upcoming slots render for the active meal window.
 
-## Optional: Train ML Models
+## ML training
 
 If you want ML-backed predictions instead of the fallback logic:
 
@@ -180,8 +187,9 @@ flutter run -d chrome --dart-define=SMARTMESS_BACKEND_URL=https://your-api.examp
 ### Backend
 
 - `PORT` sets the HTTP port (default: 8080).
+- Update CORS origins in `backend/main.py` when hosting the frontend.
 
-## Project Structure
+## Project structure
 
 ```
 SMARTMESS/
@@ -191,30 +199,19 @@ SMARTMESS/
   README.md     Project overview
 ```
 
-## Troubleshooting
-
-- Mixed content errors: hosted web apps must use an https backend URL.
-- Empty predictions: verify the server time and `mealType` match meal windows.
-- CORS issues: ensure the frontend origin is in the backend CORS allowlist.
-
-## Notes
-
-- Meal windows are defined in `backend/main.py`.
-- Predictions are returned in 15-minute slots.
-
-## 👥 Team
+## Team
 
 - [Aryan Sisodiya]('https://github.com/InfinityxR')
 -  [Daksh Rathi]('https://github.com/dakshrathi-india')
 
-## 🎓 Learning Resources
+## Learning Resources
 
 - [Flutter Documentation](https://flutter.dev)
 - [Firebase Guides](https://firebase.google.com/docs)
 - [TensorFlow Tutorials](https://www.tensorflow.org/tutorials)
-
----
 <div align="center">
+
+--- 
 
 **Built with ❤️ for better mess management**
 </div>

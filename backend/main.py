@@ -62,46 +62,49 @@ def round_up_to_next_slot(dt: datetime) -> datetime:
     return slot
 
 
-def generate_slots_for_meal(meal_type: str, slots=5):
+def get_current_meal():
+    now = datetime.now().time()
+    for meal, (start, end) in MEAL_WINDOWS.items():
+        if start <= now < end:
+            return meal
+    return None
+
+
+def generate_slots_for_meal(meal_type: str, max_slots=6):
     if meal_type not in MEAL_WINDOWS:
         return []
 
     now = datetime.now()
     start_t, end_t = MEAL_WINDOWS[meal_type]
 
-    today_start = now.replace(
-        hour=start_t.hour, minute=start_t.minute, second=0, microsecond=0
-    )
-    today_end = now.replace(
-        hour=end_t.hour, minute=end_t.minute, second=0, microsecond=0
-    )
+    start_dt = now.replace(hour=start_t.hour, minute=start_t.minute, second=0, microsecond=0)
+    end_dt = now.replace(hour=end_t.hour, minute=end_t.minute, second=0, microsecond=0)
 
-    if now > today_end:
+    if now >= end_dt:
         return []
 
-    cursor = max(round_up_to_next_slot(now), today_start)
+    cursor = max(round_up_to_next_slot(now), start_dt)
 
-    results = []
-    while cursor < today_end and len(results) < slots:
-        results.append(cursor)
+    slots = []
+    while cursor < end_dt and len(slots) < max_slots:
+        slots.append(cursor)
         cursor += timedelta(minutes=SLOT_MINUTES)
 
-    return results
+    return slots
 
 
 def generate_fallback_predictions(meal_type, capacity=100):
     slots = generate_slots_for_meal(meal_type)
 
-    predictions = []
     base_pct = {
         "breakfast": 25,
         "lunch": 40,
         "dinner": 45,
     }.get(meal_type, 20)
 
-    for idx, t in enumerate(slots):
-        pct = min(90, base_pct + idx * 6)
-
+    predictions = []
+    for i, t in enumerate(slots):
+        pct = min(90, base_pct + i * 6)
         predictions.append({
             "time_slot": t.strftime("%I:%M %p"),
             "time_24h": t.strftime("%H:%M"),
@@ -110,16 +113,13 @@ def generate_fallback_predictions(meal_type, capacity=100):
             "capacity": capacity,
             "confidence": "low",
             "recommendation": (
-                "Good time"
-                if pct < 40 else
-                "Moderate crowd"
-                if pct < 70 else
+                "Good time" if pct < 40 else
+                "Moderate crowd" if pct < 70 else
                 "Avoid if possible"
-            )
+            ),
         })
 
     return predictions
-
 
 # ------------------------------------------------------------
 # Health
@@ -141,53 +141,53 @@ def predict():
     if request.method == "OPTIONS":
         return "", 204
 
-    try:
-        payload = request.get_json(force=True, silent=True) or {}
+    payload = request.get_json(silent=True) or {}
 
-        mess_id = payload.get("messId", "alder")
-        meal_type = payload.get("mealType", "lunch")
-        capacity = int(payload.get("capacity", 100))
+    mess_id = payload.get("messId", "alder")
+    capacity = int(payload.get("capacity", 100))
 
-        # ----------------------------------------------------
-        # Try ML first
-        # ----------------------------------------------------
-        if PredictionService is not None:
-            try:
-                service = PredictionService(mess_id)
-                result = service.predict_next_slots(meal_type=meal_type)
-
-                if result and result.get("predictions"):
-                    return jsonify({
-                        "source": "ml-model",
-                        "fallback": False,
-                        **result,
-                    })
-            except Exception as e:
-                print("[WARN] ML prediction failed:", e)
-
-        # ----------------------------------------------------
-        # Fallback (meal-aware)
-        # ----------------------------------------------------
-        predictions = generate_fallback_predictions(meal_type, capacity)
-
+    meal_type = payload.get("mealType") or get_current_meal()
+    if not meal_type:
         return jsonify({
-            "source": "fallback",
-            "fallback": True,
-            "messId": mess_id,
-            "mealType": meal_type,
-            "capacity": capacity,
-            "current_crowd": 0,
-            "current_percentage": 0.0,
-            "predictions": predictions,
-            "timestamp": datetime.utcnow().isoformat(),
-        })
+            "warning": "Outside meal hours",
+            "predictions": [],
+        }), 200
 
-    except Exception as e:
-        return jsonify({
-            "error": "prediction_failed",
-            "details": str(e),
-        }), 500
+    # ----------------------------------------------------
+    # Try ML first (NO meal_type passed ❗)
+    # ----------------------------------------------------
+    if PredictionService is not None:
+        try:
+            service = PredictionService()
+            result = service.predict_next_slots(
+                mess_id=mess_id
+            )
 
+            if result and result.get("predictions"):
+                return jsonify({
+                    "source": "ml-model",
+                    "fallback": False,
+                    **result,
+                })
+        except Exception as e:
+            print("[WARN] ML prediction failed:", e)
+
+    # ----------------------------------------------------
+    # Fallback (guaranteed output)
+    # ----------------------------------------------------
+    predictions = generate_fallback_predictions(meal_type, capacity)
+
+    return jsonify({
+        "source": "fallback",
+        "fallback": True,
+        "messId": mess_id,
+        "mealType": meal_type,
+        "capacity": capacity,
+        "current_crowd": 0,
+        "current_percentage": 0.0,
+        "predictions": predictions,
+        "timestamp": datetime.utcnow().isoformat(),
+    })
 
 # ------------------------------------------------------------
 # Entry
