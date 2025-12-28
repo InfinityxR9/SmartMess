@@ -4,6 +4,12 @@ import 'package:smart_mess/providers/unified_auth_provider.dart';
 import 'package:smart_mess/services/prediction_service.dart';
 import 'package:smart_mess/models/prediction_model.dart';
 import 'package:smart_mess/utils/meal_time.dart';
+import 'package:smart_mess/theme/app_tokens.dart';
+import 'package:smart_mess/widgets/animated_metric_bar.dart';
+import 'package:smart_mess/widgets/empty_state.dart';
+import 'package:smart_mess/widgets/section_header.dart';
+import 'package:smart_mess/widgets/skeleton_loader.dart';
+import 'package:smart_mess/widgets/staggered_fade_in.dart';
 
 class PredictionScreen extends StatefulWidget {
   const PredictionScreen({Key? key}) : super(key: key);
@@ -27,7 +33,7 @@ class _PredictionScreenState extends State<PredictionScreen> {
   }
 
   Future<PredictionResult?> _loadPredictions(String messId, String? slot) async {
-    await _predictionService.trainModel(
+    return _predictionService.trainAndPredict(
       messId,
       slot: slot,
       capacity: _messCapacity,
@@ -35,23 +41,15 @@ class _PredictionScreenState extends State<PredictionScreen> {
       asyncTrain: false,
       forceTrain: true,
     );
-    return _predictionService.getPrediction(
-      messId,
-      slot: slot,
-      capacity: _messCapacity,
-      minutesBack: 15,
-      autoTrain: false,
-      asyncTrain: false,
-    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
     return Scaffold(
       appBar: AppBar(
-        title: Text('Best Time to Eat'),
+        title: const Text('Best Time to Eat'),
         elevation: 0,
-        backgroundColor: Color(0xFF6200EE),
       ),
       body: SingleChildScrollView(
         child: Container(
@@ -61,7 +59,6 @@ class _PredictionScreenState extends State<PredictionScreen> {
             children: [
               // Info card
               Card(
-                elevation: 2,
                 child: Container(
                   padding: EdgeInsets.all(16),
                   child: Column(
@@ -69,26 +66,23 @@ class _PredictionScreenState extends State<PredictionScreen> {
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.info, color: Color(0xFF6200EE), size: 28),
-                          SizedBox(width: 12),
+                          const Icon(Icons.info, color: AppColors.primary, size: 28),
+                          const SizedBox(width: 12),
                           Expanded(
                             child: Text(
                               'AI-Powered Crowd Predictions',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF6200EE),
+                              style: textTheme.titleLarge?.copyWith(
+                                color: AppColors.primary,
                               ),
                             ),
                           ),
                         ],
                       ),
-                      SizedBox(height: 12),
+                      const SizedBox(height: 12),
                       Text(
                         'Machine learning models analyze historical data to predict the best times to visit the mess with minimal crowd.',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[700],
+                        style: textTheme.bodyMedium?.copyWith(
+                          color: AppColors.inkMuted,
                           height: 1.5,
                         ),
                       ),
@@ -96,85 +90,36 @@ class _PredictionScreenState extends State<PredictionScreen> {
                   ),
                 ),
               ),
-              SizedBox(height: 24),
+              const SizedBox(height: 24),
 
               // Predictions section
-              Text(
-                'Crowd Predictions for Today',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+              const SectionHeader(
+                title: 'Crowd Predictions for Today',
+                icon: Icons.insights,
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
 
               FutureBuilder<PredictionResult?>(
                 future: _predictions,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Card(
-                      child: Container(
-                        padding: EdgeInsets.symmetric(vertical: 48),
-                        child: Center(
-                          child: Column(
-                            children: [
-                              CircularProgressIndicator(
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  Color(0xFF6200EE),
-                                ),
-                              ),
-                              SizedBox(height: 16),
-                              Text(
-                                'Loading predictions...',
-                                style: TextStyle(color: Colors.grey[600]),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
+                    return const SkeletonList(itemCount: 2, lineCount: 2);
                   }
 
                   if (snapshot.hasError) {
-                    return Card(
-                      child: Container(
-                        padding: EdgeInsets.all(16),
-                        child: Column(
-                          children: [
-                            Icon(Icons.error, color: Colors.red, size: 48),
-                            SizedBox(height: 12),
-                            Text(
-                              'Unable to load predictions',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.red,
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'Backend service may be offline',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                    return const EmptyStateCard(
+                      icon: Icons.warning_amber,
+                      title: 'Unable to load predictions',
+                      message: 'Backend service may be offline.',
                     );
                   }
 
                   final prediction = snapshot.data;
                   if (prediction == null || prediction.predictions.isEmpty) {
-                    return Card(
-                      child: Container(
-                        padding: EdgeInsets.all(16),
-                        child: Text(
-                          'Predictions unavailable. Please try again later.',
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                      ),
+                    return const EmptyStateCard(
+                      icon: Icons.bar_chart,
+                      title: 'Predictions unavailable',
+                      message: 'Please try again later.',
                     );
                   }
 
@@ -183,46 +128,39 @@ class _PredictionScreenState extends State<PredictionScreen> {
                       // Best slot recommendation
                       if (prediction.bestSlot != null) ...[
                         Container(
-                          padding: EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Color(0xFF6200EE), Color(0xFF7C3AED)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(12),
+                            gradient: AppGradients.primary,
+                            borderRadius: BorderRadius.circular(AppRadii.lg),
+                            boxShadow: AppShadows.floating,
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
                                 children: [
-                                  Icon(Icons.star, color: Colors.amber, size: 28),
-                                  SizedBox(width: 12),
+                                  const Icon(Icons.star, color: AppColors.secondary, size: 28),
+                                  const SizedBox(width: 12),
                                   Text(
                                     'Best Time',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
+                                    style: textTheme.titleMedium?.copyWith(
                                       color: Colors.white,
                                     ),
                                   ),
                                 ],
                               ),
-                              SizedBox(height: 16),
+                              const SizedBox(height: 16),
                               Text(
                                 prediction.bestSlot!.timeSlot,
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
+                                style: textTheme.headlineMedium?.copyWith(
                                   color: Colors.white,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
-                              SizedBox(height: 8),
+                              const SizedBox(height: 8),
                               Text(
                                 'Estimated crowd: ${prediction.bestSlot!.predictedCrowd.toStringAsFixed(0)} students',
-                                style: TextStyle(
-                                  fontSize: 14,
+                                style: textTheme.bodyMedium?.copyWith(
                                   color: Colors.white70,
                                 ),
                               ),
@@ -233,98 +171,88 @@ class _PredictionScreenState extends State<PredictionScreen> {
                       ],
 
                       // All time slots
-                      Text(
-                        'All Time Slots',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      const SectionHeader(
+                        title: 'All Time Slots',
+                        icon: Icons.timeline,
                       ),
-                      SizedBox(height: 12),
-                      ...prediction.predictions.map((slot) {
+                      const SizedBox(height: 12),
+                      ...prediction.predictions.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final slot = entry.value;
                         final crowdLevel = _getCrowdLevel(slot.crowdPercentage);
                         final crowdColor = _getCrowdColor(slot.crowdPercentage);
                         final crowdIcon = _getCrowdIcon(slot.crowdPercentage);
 
-                        return Card(
-                          margin: EdgeInsets.only(bottom: 12),
-                          child: Container(
-                            padding: EdgeInsets.all(16),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 60,
-                                  height: 60,
-                                  decoration: BoxDecoration(
-                                    color: crowdColor.withValues(alpha: 0.2),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Center(
-                                    child: Icon(
-                                      crowdIcon,
-                                      color: crowdColor,
-                                      size: 32,
+                        return StaggeredFadeIn(
+                          index: index,
+                          child: Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 60,
+                                    height: 60,
+                                    decoration: BoxDecoration(
+                                      color: crowdColor.withValues(alpha: 0.2),
+                                      borderRadius:
+                                          BorderRadius.circular(AppRadii.sm),
+                                    ),
+                                    child: Center(
+                                      child: Icon(
+                                        crowdIcon,
+                                        color: crowdColor,
+                                        size: 32,
+                                      ),
                                     ),
                                   ),
-                                ),
-                                SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          slot.timeSlot,
+                                          style: textTheme.titleSmall,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          '${slot.predictedCrowd.toStringAsFixed(0)} students expected',
+                                          style: textTheme.bodySmall?.copyWith(
+                                            color: AppColors.inkMuted,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 10),
+                                        AnimatedMetricBar(
+                                          percentage: slot.crowdPercentage,
+                                          color: crowdColor,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
                                       Text(
-                                        slot.timeSlot,
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
+                                        crowdLevel,
+                                        style: textTheme.labelLarge?.copyWith(
+                                          color: crowdColor,
                                         ),
                                       ),
-                                      SizedBox(height: 4),
+                                      const SizedBox(height: 4),
                                       Text(
-                                        '${slot.predictedCrowd.toStringAsFixed(0)} students expected',
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          color: Colors.grey[600],
-                                        ),
-                                      ),
-                                      SizedBox(height: 8),
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(4),
-                                        child: LinearProgressIndicator(
-                                          value: slot.crowdPercentage / 100,
-                                          minHeight: 6,
-                                          backgroundColor: Colors.grey[200],
-                                          valueColor: AlwaysStoppedAnimation<Color>(
-                                            crowdColor,
-                                          ),
+                                        '${slot.crowdPercentage.toStringAsFixed(0)}%',
+                                        style: textTheme.bodySmall?.copyWith(
+                                          color: AppColors.inkMuted,
                                         ),
                                       ),
                                     ],
                                   ),
-                                ),
-                                SizedBox(width: 12),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text(
-                                      crowdLevel,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold,
-                                        color: crowdColor,
-                                      ),
-                                    ),
-                                    SizedBox(height: 4),
-                                    Text(
-                                      '${slot.crowdPercentage.toStringAsFixed(0)}%',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         );
@@ -339,83 +267,83 @@ class _PredictionScreenState extends State<PredictionScreen> {
               Container(
                 padding: EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.orange.shade200),
+                  color: AppColors.secondary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppRadii.md),
+                  border: Border.all(
+                    color: AppColors.secondary.withValues(alpha: 0.4),
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.lightbulb, color: Colors.orange.shade700),
-                        SizedBox(width: 12),
+                        const Icon(Icons.lightbulb, color: AppColors.primary),
+                        const SizedBox(width: 12),
                         Text(
                           'Tips for Better Experience',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.orange.shade700,
+                          style: textTheme.titleMedium?.copyWith(
+                            color: AppColors.primary,
                           ),
                         ),
                       ],
                     ),
-                    SizedBox(height: 12),
+                    const SizedBox(height: 12),
                     _buildTipItem(
                       '- Visit during green/low crowd slots for shorter queues',
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     _buildTipItem(
                       '- Peak hours usually coincide with typical break times',
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     _buildTipItem(
                       '- Predictions improve with more historical data',
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     _buildTipItem(
                       '- Check updated predictions throughout the day',
                     ),
                   ],
                 ),
               ),
-              SizedBox(height: 24),
+              const SizedBox(height: 24),
 
               // How it works card
               Container(
                 padding: EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue.shade200),
+                  color: AppColors.accent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppRadii.md),
+                  border: Border.all(
+                    color: AppColors.accent.withValues(alpha: 0.4),
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.psychology, color: Colors.blue.shade700),
-                        SizedBox(width: 12),
+                        const Icon(Icons.psychology, color: AppColors.primary),
+                        const SizedBox(width: 12),
                         Text(
                           'How It Works',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue.shade700,
+                          style: textTheme.titleMedium?.copyWith(
+                            color: AppColors.primary,
                           ),
                         ),
                       ],
                     ),
-                    SizedBox(height: 12),
+                    const SizedBox(height: 12),
                     _buildHowItWorksItem('Historical data', 'Past attendance patterns'),
-                    SizedBox(height: 12),
+                    const SizedBox(height: 12),
                     _buildHowItWorksItem('ML Analysis', 'Pattern recognition and learning'),
-                    SizedBox(height: 12),
+                    const SizedBox(height: 12),
                     _buildHowItWorksItem('Real-time prediction', 'Updated crowd forecasts'),
                   ],
                 ),
               ),
-              SizedBox(height: 24),
+              const SizedBox(height: 24),
             ],
           ),
         ),
@@ -424,17 +352,18 @@ class _PredictionScreenState extends State<PredictionScreen> {
   }
 
   Widget _buildTipItem(String text) {
+    final textTheme = Theme.of(context).textTheme;
     return Text(
       text,
-      style: TextStyle(
-        fontSize: 14,
-        color: Colors.grey[700],
+      style: textTheme.bodyMedium?.copyWith(
+        color: AppColors.inkMuted,
         height: 1.4,
       ),
     );
   }
 
   Widget _buildHowItWorksItem(String step, String description) {
+    final textTheme = Theme.of(context).textTheme;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -442,31 +371,29 @@ class _PredictionScreenState extends State<PredictionScreen> {
           width: 32,
           height: 32,
           decoration: BoxDecoration(
-            color: Colors.blue.shade200,
+            color: AppColors.accent,
             shape: BoxShape.circle,
           ),
-          child: Center(
-            child: Icon(Icons.check, size: 18, color: Colors.white),
-          ),
+              child: const Center(
+                child: Icon(Icons.check, size: 18, color: Colors.white),
+              ),
         ),
-        SizedBox(width: 12),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 step,
-                style: TextStyle(
-                  fontSize: 14,
+                style: textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: Colors.blue.shade900,
+                  color: AppColors.primary,
                 ),
               ),
               Text(
                 description,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.blue.shade600,
+                style: textTheme.bodySmall?.copyWith(
+                  color: AppColors.inkMuted,
                 ),
               ),
             ],
@@ -484,10 +411,10 @@ class _PredictionScreenState extends State<PredictionScreen> {
   }
 
   Color _getCrowdColor(double percentage) {
-    if (percentage < 30) return Colors.green;
-    if (percentage < 60) return Colors.orange;
-    if (percentage < 85) return Colors.deepOrange;
-    return Colors.red;
+    if (percentage < 30) return AppColors.success;
+    if (percentage < 60) return AppColors.warning;
+    if (percentage < 85) return AppColors.accent;
+    return AppColors.danger;
   }
 
   IconData _getCrowdIcon(double percentage) {
@@ -497,3 +424,4 @@ class _PredictionScreenState extends State<PredictionScreen> {
     return Icons.sentiment_very_dissatisfied;
   }
 }
+

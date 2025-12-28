@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:smart_mess/utils/logger.dart';
 
 class ManagerAuthService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -10,7 +11,7 @@ class ManagerAuthService {
     String password,
   ) async {
     try {
-      print('[ManagerAuth] Authenticating: $email');
+      logDebug('[ManagerAuth] Authenticating: $email');
 
       // Query loginCredentials collection where email and password match
       final query = await _firestore
@@ -22,13 +23,13 @@ class ManagerAuthService {
           .get();
 
       if (query.docs.isEmpty) {
-        print('[ManagerAuth] Manager not found: $email');
+        logDebug('[ManagerAuth] Manager not found: $email');
         return null;
       }
 
       final userData = query.docs.first.data();
 
-      print('[ManagerAuth] Authentication successful: ${userData['name']}');
+      logDebug('[ManagerAuth] Authentication successful: ${userData['name']}');
 
       // Return user data with ID
       return {
@@ -36,7 +37,7 @@ class ManagerAuthService {
         ...userData,
       };
     } catch (e) {
-      print('[ManagerAuth] Authentication error: $e');
+      logError('[ManagerAuth] Authentication error: $e');
       return null;
     }
   }
@@ -44,12 +45,12 @@ class ManagerAuthService {
   /// Get manager's mess information
   Future<Map<String, dynamic>?> getManagerMessInfo(String messId) async {
     try {
-      print('[ManagerAuth] Getting mess info for: $messId');
+      logDebug('[ManagerAuth] Getting mess info for: $messId');
 
       final messDoc = await _firestore.collection('messes').doc(messId).get();
 
       if (!messDoc.exists) {
-        print('[ManagerAuth] Mess not found: $messId');
+        logDebug('[ManagerAuth] Mess not found: $messId');
         return null;
       }
 
@@ -61,7 +62,7 @@ class ManagerAuthService {
         'capacity': messData?['capacity'],
       };
     } catch (e) {
-      print('[ManagerAuth] Error getting mess info: $e');
+      logError('[ManagerAuth] Error getting mess info: $e');
       return null;
     }
   }
@@ -88,7 +89,7 @@ class ManagerAuthService {
               })
           .toList();
     } catch (e) {
-      print('[ManagerAuth] Error getting messes: $e');
+      logError('[ManagerAuth] Error getting messes: $e');
       return [];
     }
   }
@@ -96,9 +97,9 @@ class ManagerAuthService {
   /// Sign out manager
   Future<void> signOut() async {
     try {
-      print('[ManagerAuth] Manager signed out');
+      logDebug('[ManagerAuth] Manager signed out');
     } catch (e) {
-      print('[ManagerAuth] Sign-out error: $e');
+      logError('[ManagerAuth] Sign-out error: $e');
     }
   }
 }

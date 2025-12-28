@@ -3,6 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:smart_mess/services/review_service.dart';
 import 'package:smart_mess/utils/meal_time.dart';
+import 'package:smart_mess/theme/app_tokens.dart';
+import 'package:smart_mess/widgets/empty_state.dart';
+import 'package:smart_mess/widgets/section_header.dart';
+import 'package:smart_mess/widgets/skeleton_loader.dart';
+import 'package:smart_mess/widgets/staggered_fade_in.dart';
 
 class AnalyticsEnhancedScreen extends StatefulWidget {
   final String messId;
@@ -158,6 +163,7 @@ class _AnalyticsEnhancedScreenState extends State<AnalyticsEnhancedScreen> {
   @override
   Widget build(BuildContext context) {
     final slot = _currentSlot;
+    final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
       appBar: AppBar(
@@ -176,7 +182,7 @@ class _AnalyticsEnhancedScreenState extends State<AnalyticsEnhancedScreen> {
                   children: [
                     Icon(
                       slot == null ? Icons.access_time : Icons.restaurant,
-                      color: const Color(0xFF6200EE),
+                      color: AppColors.primary,
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -184,7 +190,7 @@ class _AnalyticsEnhancedScreenState extends State<AnalyticsEnhancedScreen> {
                         slot == null
                             ? 'Outside meal hours. Analytics show only during meal slots.'
                             : 'Current Slot: ${slot.label} (${slot.window})',
-                        style: const TextStyle(fontWeight: FontWeight.w600),
+                        style: textTheme.titleSmall,
                       ),
                     ),
                   ],
@@ -193,17 +199,25 @@ class _AnalyticsEnhancedScreenState extends State<AnalyticsEnhancedScreen> {
             ),
             const SizedBox(height: 20),
             if (slot == null)
-              const Text('No analytics available outside meal hours')
+              const EmptyStateCard(
+                icon: Icons.access_time,
+                title: 'No analytics right now',
+                message: 'Analytics are available during active meal slots.',
+              )
             else
               FutureBuilder<Map<String, dynamic>>(
                 future: _analyticsData,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
+                    return const SkeletonList(itemCount: 2, lineCount: 2);
                   }
 
                   if (snapshot.hasError) {
-                    return const Center(child: Text('Unable to load analytics'));
+                    return const EmptyStateCard(
+                      icon: Icons.warning_amber,
+                      title: 'Unable to load analytics',
+                      message: 'Please try again in a moment.',
+                    );
                   }
 
                   final data = snapshot.data ?? {};
@@ -213,7 +227,7 @@ class _AnalyticsEnhancedScreenState extends State<AnalyticsEnhancedScreen> {
                     children: [
                       Text(
                         'Date: ${data['date'] ?? ''}',
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        style: textTheme.bodySmall?.copyWith(color: AppColors.inkMuted),
                       ),
                       const SizedBox(height: 12),
                       Row(
@@ -257,9 +271,9 @@ class _AnalyticsEnhancedScreenState extends State<AnalyticsEnhancedScreen> {
                       ),
                       const SizedBox(height: 24),
                       if ((data['students'] as List?)?.isNotEmpty ?? false) ...[
-                        const Text(
-                          'Student Attendance',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        const SectionHeader(
+                          title: 'Student Attendance',
+                          icon: Icons.check_circle,
                         ),
                         const SizedBox(height: 12),
                         ListView.builder(
@@ -270,17 +284,26 @@ class _AnalyticsEnhancedScreenState extends State<AnalyticsEnhancedScreen> {
                             final student = (data['students'] as List?)?[index] ?? {};
                             final markedBy = (student['markedBy'] ?? 'unknown').toString();
                             final markedByLabel = markedBy == 'qr' ? 'scanned' : markedBy;
-                            return Card(
-                              child: ListTile(
-                                leading: const Icon(Icons.check_circle_outline, color: Colors.green),
-                                title: Text(student['studentName']?.toString() ?? 'Anonymous'),
-                                subtitle: Text(
-                                  'ID: ${student['enrollmentId']?.toString() ?? 'Anonymous'} | $markedByLabel',
-                                  style: const TextStyle(fontSize: 12),
-                                ),
-                                trailing: Text(
-                                  _formatMarkedTime(student['markedAt']),
-                                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                            return StaggeredFadeIn(
+                              index: index,
+                              child: Card(
+                                child: ListTile(
+                                  leading: const Icon(
+                                    Icons.check_circle_outline,
+                                    color: AppColors.success,
+                                  ),
+                                  title:
+                                      Text(student['studentName']?.toString() ?? 'Anonymous'),
+                                  subtitle: Text(
+                                    'ID: ${student['enrollmentId']?.toString() ?? 'Anonymous'} | $markedByLabel',
+                                    style: textTheme.bodySmall,
+                                  ),
+                                  trailing: Text(
+                                    _formatMarkedTime(student['markedAt']),
+                                    style: textTheme.bodySmall?.copyWith(
+                                      color: AppColors.inkMuted,
+                                    ),
+                                  ),
                                 ),
                               ),
                             );
@@ -288,12 +311,16 @@ class _AnalyticsEnhancedScreenState extends State<AnalyticsEnhancedScreen> {
                         ),
                         const SizedBox(height: 24),
                       ] else
-                        const Text('No attendance marked yet for this slot'),
+                        const EmptyStateCard(
+                          icon: Icons.person_off,
+                          title: 'No attendance marked',
+                          message: 'Attendance will appear as students check in.',
+                        ),
                       if ((data['reviews'] as List?)?.isNotEmpty ?? false) ...[
                         const SizedBox(height: 24),
-                        const Text(
-                          'Recent Reviews',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        const SectionHeader(
+                          title: 'Recent Reviews',
+                          icon: Icons.rate_review,
                         ),
                         const SizedBox(height: 12),
                         ListView.builder(
@@ -304,51 +331,64 @@ class _AnalyticsEnhancedScreenState extends State<AnalyticsEnhancedScreen> {
                             final reviewData = (data['reviews'] as List?)?[index];
                             if (reviewData == null) return const SizedBox.shrink();
 
-                            return Card(
-                              child: Padding(
-                                padding: const EdgeInsets.all(12),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        const Text(
-                                          'Anonymous',
-                                          style: TextStyle(fontWeight: FontWeight.bold),
-                                        ),
-                                        Row(
-                                          children: List.generate(
-                                            5,
-                                            (i) => Icon(
-                                              Icons.star,
-                                              size: 16,
-                                              color: i < (reviewData['rating'] as int? ?? 0)
-                                                  ? Colors.amber
-                                                  : Colors.grey,
+                            return StaggeredFadeIn(
+                              index: index,
+                              child: Card(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            'Anonymous',
+                                            style: textTheme.titleSmall,
+                                          ),
+                                          Row(
+                                            children: List.generate(
+                                              5,
+                                              (i) => Icon(
+                                                Icons.star,
+                                                size: 16,
+                                                color:
+                                                    i < (reviewData['rating'] as int? ?? 0)
+                                                        ? AppColors.secondary
+                                                        : AppColors.outlineSubtle,
+                                              ),
                                             ),
                                           ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        reviewData['comment'] ?? '',
+                                        style: textTheme.bodyMedium?.copyWith(
+                                          color: AppColors.inkMuted,
                                         ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      reviewData['comment'] ?? '',
-                                      style: TextStyle(color: Colors.grey[700]),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      _formatMarkedTime(reviewData['submittedAt']),
-                                      style: const TextStyle(fontSize: 10, color: Colors.grey),
-                                    ),
-                                  ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        _formatMarkedTime(reviewData['submittedAt']),
+                                        style: textTheme.bodySmall?.copyWith(
+                                          color: AppColors.inkMuted,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             );
                           },
                         ),
                       ] else
-                        const Text('No reviews yet for this slot'),
+                        const EmptyStateCard(
+                          icon: Icons.star_border,
+                          title: 'No reviews yet',
+                          message: 'Feedback will show up once students submit reviews.',
+                        ),
                     ],
                   );
                 },
@@ -378,17 +418,25 @@ class _StatCard extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         child: Column(
           children: [
-            Icon(icon, color: Colors.purple, size: 24),
+            Icon(icon, color: AppColors.secondary, size: 24),
             const SizedBox(height: 8),
             Text(
               value,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
             ),
             const SizedBox(height: 4),
-            Text(title, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.inkMuted,
+                  ),
+            ),
           ],
         ),
       ),
     );
   }
 }
+

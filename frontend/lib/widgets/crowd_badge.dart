@@ -12,18 +12,18 @@ class CrowdBadge extends StatelessWidget {
 
     switch (level) {
       case 'Low':
-        backgroundColor = Colors.green.withValues(alpha: 0.2);
-        textColor = Colors.green;
+        backgroundColor = const Color(0xFF2A9D8F).withValues(alpha: 0.2);
+        textColor = const Color(0xFF2A9D8F);
         icon = Icons.sentiment_satisfied;
         break;
       case 'Medium':
-        backgroundColor = Colors.orange.withValues(alpha: 0.2);
-        textColor = Colors.orange;
+        backgroundColor = const Color(0xFFF4A261).withValues(alpha: 0.2);
+        textColor = const Color(0xFFF4A261);
         icon = Icons.sentiment_neutral;
         break;
       case 'High':
-        backgroundColor = Colors.red.withValues(alpha: 0.2);
-        textColor = Colors.red;
+        backgroundColor = const Color(0xFFE63946).withValues(alpha: 0.2);
+        textColor = const Color(0xFFE63946);
         icon = Icons.sentiment_dissatisfied;
         break;
     }

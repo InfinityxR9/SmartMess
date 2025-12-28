@@ -5,6 +5,7 @@ import 'package:smart_mess/providers/unified_auth_provider.dart';
 import 'package:smart_mess/services/attendance_service.dart';
 import 'package:smart_mess/screens/attendance_view_screen.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:smart_mess/theme/app_tokens.dart';
 
 class QRGeneratorScreen extends StatefulWidget {
   final String mealType;
@@ -140,17 +141,17 @@ class _QRGeneratorScreenState extends State<QRGeneratorScreen> {
                 Container(
                   padding: EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.red.shade100,
+                    color: AppColors.danger.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Column(
                     children: [
-                      Icon(Icons.error_outline, size: 48, color: Colors.red),
+                      const Icon(Icons.error_outline, size: 48, color: AppColors.danger),
                       SizedBox(height: 12),
                       Text(
                         _error!,
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.red, fontSize: 16),
+                        style: const TextStyle(color: AppColors.danger, fontSize: 16),
                       ),
                       SizedBox(height: 16),
                       ElevatedButton(
@@ -204,9 +205,9 @@ class _QRGeneratorScreenState extends State<QRGeneratorScreen> {
                   child: Container(
                     padding: EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: AppColors.surface,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey[300]!, width: 1),
+                      border: Border.all(color: AppColors.outline, width: 1),
                     ),
                     child: Column(
                       children: [
@@ -216,7 +217,7 @@ class _QRGeneratorScreenState extends State<QRGeneratorScreen> {
                           'QR Code ID: ${(_currentQR?['qrCodeId'] as String?)?.substring(0, 8) ?? "N/A"}...',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey[500],
+                            color: AppColors.inkMuted,
                             fontFamily: 'monospace',
                           ),
                         ),
@@ -228,16 +229,18 @@ class _QRGeneratorScreenState extends State<QRGeneratorScreen> {
                 Container(
                   padding: EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
+                    color: AppColors.accent.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.blue.shade200),
+                    border: Border.all(
+                      color: AppColors.accent.withValues(alpha: 0.4),
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.info, color: Colors.blue.shade700),
+                          const Icon(Icons.info, color: AppColors.primary),
                           SizedBox(width: 12),
                           Expanded(
                             child: Text(
@@ -245,7 +248,7 @@ class _QRGeneratorScreenState extends State<QRGeneratorScreen> {
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.blue.shade700,
+                                color: AppColors.primary,
                               ),
                             ),
                           ),
@@ -259,7 +262,7 @@ class _QRGeneratorScreenState extends State<QRGeneratorScreen> {
                         '4. A fresh QR is generated automatically after expiry',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.blue.shade900,
+                          color: AppColors.primary,
                           height: 1.6,
                         ),
                       ),
@@ -273,7 +276,8 @@ class _QRGeneratorScreenState extends State<QRGeneratorScreen> {
                   onPressed: _generateQR,
                   style: ElevatedButton.styleFrom(
                     padding: EdgeInsets.symmetric(vertical: 12),
-                    backgroundColor: Color(0xFF6200EE),
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
                   ),
                 ),
                 SizedBox(height: 12),
@@ -314,7 +318,7 @@ class _QRGeneratorScreenState extends State<QRGeneratorScreen> {
             label,
             style: TextStyle(
               fontSize: 14,
-              color: Colors.grey[600],
+              color: AppColors.inkMuted,
             ),
           ),
           Text(
@@ -334,7 +338,7 @@ class _QRGeneratorScreenState extends State<QRGeneratorScreen> {
       return Container(
         width: 240,
         height: 240,
-        color: Colors.grey[200],
+        color: AppColors.outlineSubtle,
         child: Center(child: CircularProgressIndicator()),
       );
     }
@@ -343,8 +347,8 @@ class _QRGeneratorScreenState extends State<QRGeneratorScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: Colors.black),
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.ink),
       ),
       child: QrImageView(
         data: qrPayload,
@@ -355,4 +359,5 @@ class _QRGeneratorScreenState extends State<QRGeneratorScreen> {
     );
   }
 }
+
 

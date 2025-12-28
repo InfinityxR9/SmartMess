@@ -107,9 +107,6 @@ class StudentPortalTabsScreen extends StatelessWidget {
             ),
           ],
           bottom: const TabBar(
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white70,
-            indicatorColor: Colors.white,
             tabs: [
               Tab(text: 'Reviews'),
               Tab(text: 'Predictions'),

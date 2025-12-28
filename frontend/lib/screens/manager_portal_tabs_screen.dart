@@ -11,6 +11,12 @@ import 'package:smart_mess/services/prediction_service.dart';
 import 'package:smart_mess/services/review_service.dart';
 import 'package:smart_mess/utils/meal_time.dart';
 import 'package:smart_mess/widgets/reviews_tab.dart';
+import 'package:smart_mess/theme/app_tokens.dart';
+import 'package:smart_mess/widgets/animated_metric_bar.dart';
+import 'package:smart_mess/widgets/empty_state.dart';
+import 'package:smart_mess/widgets/section_header.dart';
+import 'package:smart_mess/widgets/skeleton_loader.dart';
+import 'package:smart_mess/widgets/staggered_fade_in.dart';
 
 class ManagerPortalTabsScreen extends StatefulWidget {
   final String messId;
@@ -131,9 +137,6 @@ class _ManagerPortalTabsScreenState extends State<ManagerPortalTabsScreen> {
           ],
           bottom: const TabBar(
             isScrollable: true,
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white70,
-            indicatorColor: Colors.white,
             tabs: [
               Tab(text: 'Review'),
               Tab(text: 'Prediction + Analysis'),
@@ -265,7 +268,7 @@ class _ManagerPredictionTabState extends State<ManagerPredictionTab> {
   }
 
   Future<PredictionResult?> _loadPredictions(String slotType) async {
-    await _predictionService.trainModel(
+    return _predictionService.trainAndPredict(
       widget.messId,
       slot: slotType,
       capacity: _messCapacity,
@@ -273,19 +276,12 @@ class _ManagerPredictionTabState extends State<ManagerPredictionTab> {
       asyncTrain: false,
       forceTrain: true,
     );
-    return _predictionService.getPrediction(
-      widget.messId,
-      slot: slotType,
-      capacity: _messCapacity,
-      minutesBack: 15,
-      autoTrain: false,
-      asyncTrain: false,
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     final slot = _currentSlot;
+    final textTheme = Theme.of(context).textTheme;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -296,7 +292,7 @@ class _ManagerPredictionTabState extends State<ManagerPredictionTab> {
               children: [
                 Icon(
                   slot == null ? Icons.access_time : Icons.restaurant,
-                  color: const Color(0xFF6200EE),
+                  color: AppColors.primary,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -304,7 +300,7 @@ class _ManagerPredictionTabState extends State<ManagerPredictionTab> {
                     slot == null
                         ? 'Outside meal hours. Predictions show only during meal slots.'
                         : 'Current Slot: ${slot.label} (${slot.window})',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                    style: textTheme.titleSmall,
                   ),
                 ),
               ],
@@ -313,87 +309,108 @@ class _ManagerPredictionTabState extends State<ManagerPredictionTab> {
         ),
         const SizedBox(height: 20),
         if (slot == null)
-          const Text('No predictions available outside meal hours')
+          const EmptyStateCard(
+            icon: Icons.schedule,
+            title: 'No predictions available',
+            message: 'Predictions appear during active meal slots.',
+          )
         else
-          FutureBuilder<PredictionResult?>(
-            future: _predictions,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SectionHeader(
+                title: 'Upcoming 15-Min Slot Predictions',
+                icon: Icons.insights,
+              ),
+              FutureBuilder<PredictionResult?>(
+                future: _predictions,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const SkeletonList(itemCount: 2, lineCount: 1);
+                  }
 
-              final prediction = snapshot.data;
-              if (prediction == null || prediction.predictions.isEmpty) {
-                return Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Text('No predictions available. Check back during meal times.'),
-                );
-              }
+                  final prediction = snapshot.data;
+                  if (prediction == null || prediction.predictions.isEmpty) {
+                    return const EmptyStateCard(
+                      icon: Icons.bar_chart,
+                      title: 'No predictions available',
+                      message: 'Check back during meal times for updates.',
+                    );
+                  }
 
-              return Column(
-                children: prediction.predictions.map((pred) {
-                  final isBad = pred.crowdPercentage > 70;
-                  final isModerate = pred.crowdPercentage > 40;
-
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: isBad
-                            ? Colors.red.shade300
-                            : isModerate
-                                ? Colors.orange.shade300
-                                : Colors.green.shade300,
-                      ),
-                      borderRadius: BorderRadius.circular(8),
-                      color: isBad
-                          ? Colors.red.shade50
+                  return Column(
+                    children: prediction.predictions.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final pred = entry.value;
+                      final isBad = pred.crowdPercentage > 70;
+                      final isModerate = pred.crowdPercentage > 40;
+                      final crowdColor = isBad
+                          ? AppColors.danger
                           : isModerate
-                              ? Colors.orange.shade50
-                              : Colors.green.shade50,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              pred.timeSlot,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
+                              ? AppColors.warning
+                              : AppColors.success;
+
+                      return StaggeredFadeIn(
+                        index: index,
+                        child: Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: crowdColor.withValues(alpha: 0.16),
+                                    borderRadius:
+                                        BorderRadius.circular(AppRadii.sm),
+                                  ),
+                                  child: Icon(
+                                    Icons.people,
+                                    color: crowdColor,
+                                    size: 28,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(pred.timeSlot,
+                                          style: textTheme.titleSmall),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '${pred.predictedCrowd.toStringAsFixed(0)} students expected',
+                                        style: textTheme.bodySmall?.copyWith(
+                                          color: AppColors.inkMuted,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 10),
+                                      AnimatedMetricBar(
+                                        percentage: pred.crowdPercentage,
+                                        color: crowdColor,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  '${pred.crowdPercentage.toStringAsFixed(0)}%',
+                                  style: textTheme.titleMedium?.copyWith(
+                                    color: crowdColor,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${pred.predictedCrowd.toStringAsFixed(0)} students expected',
-                              style: TextStyle(color: Colors.grey[700], fontSize: 12),
-                            ),
-                          ],
-                        ),
-                        Text(
-                          '${pred.crowdPercentage.toStringAsFixed(0)}%',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: isBad
-                                ? Colors.red
-                                : isModerate
-                                    ? Colors.orange
-                                    : Colors.green,
                           ),
                         ),
-                      ],
-                    ),
+                      );
+                    }).toList(),
                   );
-                }).toList(),
-              );
-            },
+                },
+              ),
+            ],
           ),
       ],
     );
@@ -468,21 +485,13 @@ class _ManagerAttendanceTabState extends State<ManagerAttendanceTab> {
   }
 
   Future<PredictionResult?> _loadPredictions(String slotType) async {
-    await _predictionService.trainModel(
+    return _predictionService.trainAndPredict(
       widget.messId,
       slot: slotType,
       capacity: _messCapacity,
       minutesBack: 15,
       asyncTrain: false,
       forceTrain: true,
-    );
-    return _predictionService.getPrediction(
-      widget.messId,
-      slot: slotType,
-      capacity: _messCapacity,
-      minutesBack: 15,
-      autoTrain: false,
-      asyncTrain: false,
     );
   }
 
@@ -586,6 +595,7 @@ class _ManagerAttendanceTabState extends State<ManagerAttendanceTab> {
   @override
   Widget build(BuildContext context) {
     final slot = _currentSlot;
+    final textTheme = Theme.of(context).textTheme;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -596,7 +606,7 @@ class _ManagerAttendanceTabState extends State<ManagerAttendanceTab> {
               children: [
                 Icon(
                   slot == null ? Icons.access_time : Icons.restaurant,
-                  color: const Color(0xFF6200EE),
+                  color: AppColors.primary,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -604,7 +614,7 @@ class _ManagerAttendanceTabState extends State<ManagerAttendanceTab> {
                     slot == null
                         ? 'Outside meal hours. Attendance shows only during meal slots.'
                         : 'Current Slot: ${slot.label} (${slot.window})',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                    style: textTheme.titleSmall,
                   ),
                 ),
               ],
@@ -613,13 +623,17 @@ class _ManagerAttendanceTabState extends State<ManagerAttendanceTab> {
         ),
         const SizedBox(height: 20),
         if (slot == null)
-          const Text('No attendance available outside meal hours')
+          const EmptyStateCard(
+            icon: Icons.schedule,
+            title: 'No attendance data',
+            message: 'Attendance appears during active meal slots.',
+          )
         else
           FutureBuilder<Map<String, dynamic>>(
             future: _attendanceData,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
+                return const SkeletonList(itemCount: 2, lineCount: 2);
               }
 
               final data = snapshot.data ?? {};
@@ -630,7 +644,7 @@ class _ManagerAttendanceTabState extends State<ManagerAttendanceTab> {
                   children: [
                   Text(
                     'Date: ${data['date'] ?? ''}',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    style: textTheme.bodySmall?.copyWith(color: AppColors.inkMuted),
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -674,85 +688,96 @@ class _ManagerAttendanceTabState extends State<ManagerAttendanceTab> {
                   ),
                   const SizedBox(height: 24),
                   if (widget.showPredictions) ...[
-                    const Text(
-                      'Upcoming 15-Min Slot Predictions',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    const SectionHeader(
+                      title: 'Upcoming 15-Min Slot Predictions',
+                      icon: Icons.insights,
                     ),
                     const SizedBox(height: 12),
                     FutureBuilder<PredictionResult?>(
                       future: _predictions,
                       builder: (context, snapshot) {
                         if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(child: CircularProgressIndicator());
+                          return const SkeletonList(itemCount: 1, lineCount: 1);
                         }
 
                         final prediction = snapshot.data;
                         if (prediction == null || prediction.predictions.isEmpty) {
-                          return Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey.shade300),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Text('No predictions available. Check back during meal times.'),
+                          return const EmptyStateCard(
+                            icon: Icons.bar_chart,
+                            title: 'No predictions available',
+                            message: 'Check back during meal times for updates.',
                           );
                         }
 
                         return Column(
-                          children: prediction.predictions.map((pred) {
+                          children: prediction.predictions.asMap().entries.map((entry) {
+                            final index = entry.key;
+                            final pred = entry.value;
                             final isBad = pred.crowdPercentage > 70;
                             final isModerate = pred.crowdPercentage > 40;
+                            final crowdColor = isBad
+                                ? AppColors.danger
+                                : isModerate
+                                    ? AppColors.warning
+                                    : AppColors.success;
 
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: isBad
-                                      ? Colors.red.shade300
-                                      : isModerate
-                                          ? Colors.orange.shade300
-                                          : Colors.green.shade300,
-                                ),
-                                borderRadius: BorderRadius.circular(8),
-                                color: isBad
-                                    ? Colors.red.shade50
-                                    : isModerate
-                                        ? Colors.orange.shade50
-                                        : Colors.green.shade50,
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                            return StaggeredFadeIn(
+                              index: index,
+                              child: Card(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Row(
                                     children: [
-                                      Text(
-                                        pred.timeSlot,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
+                                      Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                          color: crowdColor.withValues(alpha: 0.16),
+                                          borderRadius:
+                                              BorderRadius.circular(AppRadii.sm),
+                                        ),
+                                        child: Icon(
+                                          Icons.people,
+                                          color: crowdColor,
+                                          size: 28,
                                         ),
                                       ),
-                                      const SizedBox(height: 4),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              pred.timeSlot,
+                                              style: textTheme.titleSmall,
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              '${pred.predictedCrowd.toStringAsFixed(0)} students expected',
+                                              style: textTheme.bodySmall?.copyWith(
+                                                color: AppColors.inkMuted,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 10),
+                                            AnimatedMetricBar(
+                                              percentage: pred.crowdPercentage,
+                                              color: crowdColor,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
                                       Text(
-                                        '${pred.predictedCrowd.toStringAsFixed(0)} students expected',
-                                        style: TextStyle(color: Colors.grey[700], fontSize: 12),
+                                        '${pred.crowdPercentage.toStringAsFixed(0)}%',
+                                        style: textTheme.titleMedium?.copyWith(
+                                          color: crowdColor,
+                                          fontWeight: FontWeight.w700,
+                                        ),
                                       ),
                                     ],
                                   ),
-                                  Text(
-                                    '${pred.crowdPercentage.toStringAsFixed(0)}%',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: isBad
-                                          ? Colors.red
-                                          : isModerate
-                                              ? Colors.orange
-                                              : Colors.green,
-                                    ),
-                                  ),
-                                ],
+                                ),
                               ),
                             );
                           }).toList(),
@@ -762,13 +787,17 @@ class _ManagerAttendanceTabState extends State<ManagerAttendanceTab> {
                     const SizedBox(height: 24),
                   ],
                   if (widget.showStudentList) ...[
-                    const Text(
-                      'Student Attendance',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    const SectionHeader(
+                      title: 'Student Attendance',
+                      icon: Icons.badge,
                     ),
                     const SizedBox(height: 12),
                     if (students.isEmpty)
-                      const Text('No attendance marked yet for this slot')
+                      const EmptyStateCard(
+                        icon: Icons.person_off,
+                        title: 'No attendance marked',
+                        message: 'Student check-ins will appear here.',
+                      )
                     else
                       ListView.builder(
                         shrinkWrap: true,
@@ -778,18 +807,26 @@ class _ManagerAttendanceTabState extends State<ManagerAttendanceTab> {
                           final student = students[index] as Map<String, dynamic>;
                           final markedBy = (student['markedBy'] ?? 'unknown').toString();
                           final markedByLabel = markedBy == 'qr' ? 'scanned' : markedBy;
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            child: ListTile(
-                              leading: const Icon(Icons.check_circle_outline, color: Colors.green),
-                              title: Text(student['studentName']?.toString() ?? 'Anonymous'),
-                              subtitle: Text(
-                                'ID: ${student['enrollmentId']?.toString() ?? 'Anonymous'} | $markedByLabel',
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                              trailing: Text(
-                                _formatMarkedTime(student['markedAt']),
-                                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          return StaggeredFadeIn(
+                            index: index,
+                            child: Card(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              child: ListTile(
+                                leading: const Icon(
+                                  Icons.check_circle_outline,
+                                  color: AppColors.success,
+                                ),
+                                title: Text(student['studentName']?.toString() ?? 'Anonymous'),
+                                subtitle: Text(
+                                  'ID: ${student['enrollmentId']?.toString() ?? 'Anonymous'} | $markedByLabel',
+                                  style: textTheme.bodySmall,
+                                ),
+                                trailing: Text(
+                                  _formatMarkedTime(student['markedAt']),
+                                  style: textTheme.bodySmall?.copyWith(
+                                    color: AppColors.inkMuted,
+                                  ),
+                                ),
                               ),
                             ),
                           );
@@ -818,22 +855,27 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
           children: [
-            Icon(icon, color: Colors.purple, size: 24),
+            Icon(icon, color: AppColors.secondary, size: 24),
             const SizedBox(height: 8),
             Text(
               value,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 4),
-            Text(title, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            Text(
+              title,
+              style: textTheme.bodySmall?.copyWith(color: AppColors.inkMuted),
+            ),
           ],
         ),
       ),
     );
   }
 }
+

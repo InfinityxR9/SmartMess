@@ -6,6 +6,12 @@ import 'package:smart_mess/services/review_service.dart';
 import 'package:smart_mess/models/prediction_model.dart';
 import 'package:smart_mess/providers/unified_auth_provider.dart';
 import 'package:smart_mess/utils/meal_time.dart';
+import 'package:smart_mess/theme/app_tokens.dart';
+import 'package:smart_mess/widgets/animated_metric_bar.dart';
+import 'package:smart_mess/widgets/empty_state.dart';
+import 'package:smart_mess/widgets/section_header.dart';
+import 'package:smart_mess/widgets/skeleton_loader.dart';
+import 'package:smart_mess/widgets/staggered_fade_in.dart';
 
 class AnalyticsScreen extends StatefulWidget {
   final String messId;
@@ -37,7 +43,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   Future<PredictionResult?> _loadPredictions(String? slot) async {
-    await _predictionService.trainModel(
+    return _predictionService.trainAndPredict(
       widget.messId,
       slot: slot,
       capacity: _messCapacity,
@@ -45,21 +51,14 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       asyncTrain: false,
       forceTrain: true,
     );
-    return _predictionService.getPrediction(
-      widget.messId,
-      slot: slot,
-      capacity: _messCapacity,
-      minutesBack: 15,
-      autoTrain: false,
-      asyncTrain: false,
-    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
     return Scaffold(
       appBar: AppBar(
-        title: Text('Analytics Dashboard'),
+        title: const Text('Analytics Dashboard'),
         elevation: 0,
       ),
       body: SingleChildScrollView(
@@ -70,69 +69,76 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             children: [
               // Date info
               Card(
-                elevation: 2,
                 child: Container(
                   padding: EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Today\'s Attendance Summary',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.accent.withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(AppRadii.sm),
+                            ),
+                            child: const Icon(
+                              Icons.calendar_today,
+                              color: AppColors.accent,
+                              size: AppSizes.iconSm,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            'Today\'s Attendance Summary',
+                            style: textTheme.titleLarge,
+                          ),
+                        ],
                       ),
-                      SizedBox(height: 12),
+                      const SizedBox(height: 12),
                       Text(
                         'Date: ${DateTime.now().toString().split(' ')[0]}',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
+                        style: textTheme.bodySmall?.copyWith(color: AppColors.inkMuted),
                       ),
                     ],
                   ),
                 ),
               ),
-              SizedBox(height: 24),
+              const SizedBox(height: 24),
 
               // Attendance stats
-              Text(
-                'Meal-wise Attendance',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+              const SectionHeader(
+                title: 'Meal-wise Attendance',
+                icon: Icons.restaurant_menu,
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
 
               // Breakfast
               _buildStatCard(
                 mealType: 'breakfast',
                 title: 'Breakfast',
                 icon: Icons.breakfast_dining,
-                color: Color(0xFFFFC107),
+                color: AppColors.secondary,
               ),
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
 
               // Lunch
               _buildStatCard(
                 mealType: 'lunch',
                 title: 'Lunch',
                 icon: Icons.lunch_dining,
-                color: Color(0xFF4CAF50),
+                color: AppColors.success,
               ),
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
 
               // Dinner
               _buildStatCard(
                 mealType: 'dinner',
                 title: 'Dinner',
                 icon: Icons.dinner_dining,
-                color: Color(0xFF2196F3),
+                color: AppColors.accent,
               ),
-              SizedBox(height: 24),
+              const SizedBox(height: 24),
 
               // Total
               FutureBuilder<Map<String, int>>(
@@ -143,35 +149,33 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                                 (counts['lunch'] ?? 0) + 
                                 (counts['dinner'] ?? 0);
                   return Card(
-                    elevation: 4,
-                    color: Color(0xFF6200EE),
+                    elevation: 0,
+                    color: Colors.transparent,
                     child: Container(
-                      padding: EdgeInsets.all(20),
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        gradient: AppGradients.primary,
+                        borderRadius: BorderRadius.circular(AppRadii.lg),
+                        boxShadow: AppShadows.floating,
+                      ),
                       child: Column(
                         children: [
                           Text(
                             'Total Attendance Today',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.white,
-                            ),
+                            style: textTheme.titleMedium?.copyWith(color: Colors.white),
                           ),
-                          SizedBox(height: 12),
+                          const SizedBox(height: 12),
                           Text(
                             '$total',
-                            style: TextStyle(
-                              fontSize: 48,
-                              fontWeight: FontWeight.bold,
+                            style: textTheme.displayMedium?.copyWith(
                               color: Colors.white,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
-                          SizedBox(height: 12),
+                          const SizedBox(height: 12),
                           Text(
                             'students marked across all meals',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.white70,
-                            ),
+                            style: textTheme.bodyMedium?.copyWith(color: Colors.white70),
                           ),
                         ],
                       ),
@@ -179,121 +183,100 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   );
                 },
               ),
-              SizedBox(height: 24),
+              const SizedBox(height: 24),
 
               // ML Predictions Section
-              Text(
-                'Crowd Predictions',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+              const SectionHeader(
+                title: 'Crowd Predictions',
+                icon: Icons.insights,
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               FutureBuilder<PredictionResult?>(
                 future: _predictions,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Card(
-                      child: Container(
-                        padding: EdgeInsets.all(24),
-                        child: Center(
-                          child: CircularProgressIndicator(),
-                        ),
-                      ),
-                    );
+                    return const SkeletonList(itemCount: 2, lineCount: 2);
                   }
 
                   final prediction = snapshot.data;
                   if (prediction == null || prediction.predictions.isEmpty) {
-                    return Card(
-                      child: Container(
-                        padding: EdgeInsets.all(16),
-                        child: Text(
-                          'Predictions unavailable. Backend service may be offline.',
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                      ),
+                    return const EmptyStateCard(
+                      icon: Icons.bar_chart,
+                      title: 'Predictions unavailable',
+                      message:
+                          'We could not load predictions right now. Try again during meal times.',
                     );
                   }
 
                   return Column(
-                    children: prediction.predictions.map((slot) {
+                    children: prediction.predictions.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final slot = entry.value;
                       final crowdLevel = _getCrowdLevel(slot.crowdPercentage);
                       final crowdColor = _getCrowdColor(slot.crowdPercentage);
                       
-                      return Card(
-                        margin: EdgeInsets.only(bottom: 12),
-                        child: Container(
-                          padding: EdgeInsets.all(16),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: crowdColor.withValues(alpha: 0.2),
-                                  borderRadius: BorderRadius.circular(8),
+                      return StaggeredFadeIn(
+                        index: index,
+                        child: Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: crowdColor.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(AppRadii.sm),
+                                  ),
+                                  child:
+                                      Icon(Icons.people, color: crowdColor, size: 32),
                                 ),
-                                child: Icon(Icons.people, color: crowdColor, size: 32),
-                              ),
-                              SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        slot.timeSlot,
+                                        style: textTheme.titleSmall,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '${slot.predictedCrowd.toStringAsFixed(0)} students',
+                                        style: textTheme.bodySmall?.copyWith(
+                                          color: AppColors.inkMuted,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 10),
+                                      AnimatedMetricBar(
+                                        percentage: slot.crowdPercentage,
+                                        color: crowdColor,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
                                     Text(
-                                      slot.timeSlot,
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
+                                      crowdLevel,
+                                      style: textTheme.labelLarge?.copyWith(
+                                        color: crowdColor,
                                       ),
                                     ),
-                                    SizedBox(height: 4),
+                                    const SizedBox(height: 6),
                                     Text(
-                                      '${slot.predictedCrowd.toStringAsFixed(0)} students',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey[600],
+                                      '${slot.crowdPercentage.toStringAsFixed(0)}%',
+                                      style: textTheme.titleMedium?.copyWith(
+                                        color: crowdColor,
                                       ),
                                     ),
                                   ],
                                 ),
-                              ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    crowdLevel,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: crowdColor,
-                                    ),
-                                  ),
-                                  SizedBox(height: 4),
-                                  Container(
-                                    width: 60,
-                                    height: 6,
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey[200],
-                                      borderRadius: BorderRadius.circular(3),
-                                    ),
-                                    child: Stack(
-                                      children: [
-                                        Container(
-                                          width: 60 * (slot.crowdPercentage / 100),
-                                          height: 6,
-                                          decoration: BoxDecoration(
-                                            color: crowdColor,
-                                            borderRadius: BorderRadius.circular(3),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       );
@@ -301,39 +284,27 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   );
                 },
               ),
-              SizedBox(height: 24),
+              const SizedBox(height: 24),
 
               // Customer Reviews Section
-              Text(
-                'Meal Reviews',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+              const SectionHeader(
+                title: 'Meal Reviews',
+                icon: Icons.rate_review,
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               FutureBuilder<List<Map<String, dynamic>>>(
                 future: _reviewService.getMessReviews(messId: widget.messId),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Card(
-                      child: Container(
-                        padding: EdgeInsets.all(24),
-                        child: Center(child: CircularProgressIndicator()),
-                      ),
-                    );
+                    return const SkeletonList(itemCount: 2, lineCount: 2);
                   }
 
                   final reviews = snapshot.data ?? [];
                   if (reviews.isEmpty) {
-                    return Card(
-                      child: Container(
-                        padding: EdgeInsets.all(16),
-                        child: Text(
-                          'No reviews yet',
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                      ),
+                    return const EmptyStateCard(
+                      icon: Icons.star_border,
+                      title: 'No reviews yet',
+                      message: 'Encourage students to share quick feedback.',
                     );
                   }
 
@@ -345,56 +316,58 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       final review = reviews[index];
                       final rating = review['rating'] ?? 0;
                       
-                      return Card(
-                        margin: EdgeInsets.only(bottom: 12),
-                        child: Container(
-                          padding: EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    (review['mealType'] ?? 'Unknown').toString().toUpperCase(),
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.grey[600],
+                      return StaggeredFadeIn(
+                        index: index,
+                        child: Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      (review['mealType'] ?? 'Unknown')
+                                          .toString()
+                                          .toUpperCase(),
+                                      style: textTheme.labelLarge?.copyWith(
+                                        color: AppColors.inkMuted,
+                                      ),
                                     ),
+                                    Row(
+                                      children: List.generate(5, (i) {
+                                        return Icon(
+                                          Icons.star,
+                                          size: 16,
+                                          color: i < rating
+                                              ? AppColors.secondary
+                                              : AppColors.outlineSubtle,
+                                        );
+                                      }),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                if (review['comment'] != null &&
+                                    (review['comment'] as String).isNotEmpty)
+                                  Text(
+                                    review['comment'],
+                                    style: textTheme.bodyMedium,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  Row(
-                                    children: List.generate(5, (i) {
-                                      return Icon(
-                                        Icons.star,
-                                        size: 16,
-                                        color: i < rating ? Colors.amber : Colors.grey[300],
-                                      );
-                                    }),
-                                  ),
-                                ],
-                              ),
-                              SizedBox(height: 8),
-                              if (review['comment'] != null && (review['comment'] as String).isNotEmpty)
+                                const SizedBox(height: 8),
                                 Text(
-                                  review['comment'],
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    height: 1.4,
+                                  'Anonymous feedback',
+                                  style: textTheme.bodySmall?.copyWith(
+                                    color: AppColors.inkMuted,
+                                    fontStyle: FontStyle.italic,
                                   ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              SizedBox(height: 8),
-                              Text(
-                                'Anonymous feedback',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey[400],
-                                  fontStyle: FontStyle.italic,
-                                ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       );
@@ -402,43 +375,42 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   );
                 },
               ),
-              SizedBox(height: 24),
+              const SizedBox(height: 24),
 
               // Tips
               Container(
                 padding: EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue.shade200),
+                  color: AppColors.accent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppRadii.md),
+                  border: Border.all(
+                    color: AppColors.accent.withValues(alpha: 0.4),
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.info, color: Colors.blue.shade700),
-                        SizedBox(width: 12),
+                        const Icon(Icons.info, color: AppColors.primary),
+                        const SizedBox(width: 12),
                         Text(
                           'Tips',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue.shade700,
+                          style: textTheme.titleMedium?.copyWith(
+                            color: AppColors.primary,
                           ),
                         ),
                       ],
                     ),
-                    SizedBox(height: 12),
+                    const SizedBox(height: 12),
                     Text(
                       '- Monitor meal-wise attendance patterns\n'
                       '- Identify peak hours for better resource planning\n'
                       '- Use this data to improve meal planning\n'
                       '- Track which meals are more popular\n'
                       '- Prepare for expected crowds',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.blue.shade900,
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: AppColors.primary,
                         height: 1.6,
                       ),
                     ),
@@ -464,7 +436,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         final counts = snapshot.data ?? {};
         final count = counts[mealType] ?? 0;
         return Card(
-          elevation: 2,
           child: Container(
             padding: EdgeInsets.all(16),
             child: Row(
@@ -474,7 +445,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   height: 60,
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(AppRadii.sm),
                   ),
                   child: Center(
                     child: Icon(icon, size: 32, color: color),
@@ -487,29 +458,24 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     children: [
                       Text(
                         title,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: Theme.of(context).textTheme.titleSmall,
                       ),
                       SizedBox(height: 4),
                       Text(
                         '$count students marked',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[600],
-                        ),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppColors.inkMuted,
+                            ),
                       ),
                     ],
                   ),
                 ),
                 Text(
                   '$count',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: color,
+                      ),
                 ),
               ],
             ),
@@ -527,9 +493,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   Color _getCrowdColor(double percentage) {
-    if (percentage < 30) return Colors.green;
-    if (percentage < 60) return Colors.orange;
-    if (percentage < 85) return Colors.deepOrange;
-    return Colors.red;
+    if (percentage < 30) return AppColors.success;
+    if (percentage < 60) return AppColors.warning;
+    if (percentage < 85) return AppColors.accent;
+    return AppColors.danger;
   }
 }
+

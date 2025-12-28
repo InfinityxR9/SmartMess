@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:smart_mess/services/firestore_service.dart';
 import 'package:smart_mess/models/menu_model.dart';
+import 'package:smart_mess/theme/app_tokens.dart';
 
 class MenuScreen extends StatefulWidget {
   final String messId;
@@ -48,6 +49,7 @@ class _MenuScreenState extends State<MenuScreen> {
       return const SizedBox.shrink();
     }
 
+    final textTheme = Theme.of(context).textTheme;
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -65,7 +67,7 @@ class _MenuScreenState extends State<MenuScreen> {
               const SizedBox(width: 8),
               Text(
                 title,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: textTheme.titleMedium,
               ),
             ],
           ),
@@ -75,8 +77,11 @@ class _MenuScreenState extends State<MenuScreen> {
             runSpacing: 8,
             children: items
                 .map((item) => Chip(
-                      label: Text(item),
-                      backgroundColor: Colors.white,
+                      label: Text(
+                        item,
+                        style: const TextStyle(color: AppColors.ink),
+                      ),
+                      backgroundColor: AppColors.surface,
                       shape: StadiumBorder(
                         side: BorderSide(color: accent.withValues(alpha: 0.2)),
                       ),
@@ -102,7 +107,7 @@ class _MenuScreenState extends State<MenuScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.restaurant_menu, size: 64, color: Colors.grey),
+            Icon(Icons.restaurant_menu, size: 64, color: AppColors.inkMuted),
             SizedBox(height: 16),
             Text('No menu available for today'),
           ],
@@ -118,11 +123,7 @@ class _MenuScreenState extends State<MenuScreen> {
           Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF6200EE), Color(0xFF03DAC6)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              gradient: AppGradients.primary,
               borderRadius: BorderRadius.circular(18),
             ),
             child: Row(
@@ -154,29 +155,29 @@ class _MenuScreenState extends State<MenuScreen> {
             title: 'Breakfast',
             icon: Icons.breakfast_dining,
             items: breakfastItems,
-            accent: const Color(0xFFF9A825),
+            accent: AppColors.secondary,
           ),
           _buildMealCard(
             title: 'Lunch',
             icon: Icons.lunch_dining,
             items: lunchItems,
-            accent: const Color(0xFF2E7D32),
+            accent: AppColors.success,
           ),
           _buildMealCard(
             title: 'Dinner',
             icon: Icons.dinner_dining,
             items: dinnerItems,
-            accent: const Color(0xFF1565C0),
+            accent: AppColors.accent,
           ),
           if (note != null && note.isNotEmpty) ...[
             const SizedBox(height: 8),
             Card(
-              color: Colors.blue.shade50,
+              color: AppColors.accent.withValues(alpha: 0.12),
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: Text(
                   note,
-                  style: TextStyle(color: Colors.blue.shade900, fontSize: 12),
+                  style: const TextStyle(color: AppColors.primary, fontSize: 12),
                 ),
               ),
             ),
@@ -263,3 +264,4 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 }
+

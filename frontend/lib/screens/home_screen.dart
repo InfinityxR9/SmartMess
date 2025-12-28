@@ -10,6 +10,7 @@ import 'package:smart_mess/screens/manager_portal_tabs_screen.dart';
 import 'package:smart_mess/screens/rating_screen.dart';
 import 'package:smart_mess/screens/student_portal_tabs_screen.dart';
 import 'package:smart_mess/utils/meal_time.dart';
+import 'package:smart_mess/theme/app_tokens.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -39,14 +40,14 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  const Icon(Icons.error_outline, size: 64, color: AppColors.danger),
                   SizedBox(height: 16),
                   Text('Error'),
                   SizedBox(height: 8),
                   Text(
                     authProvider.error!,
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.red, fontSize: 14),
+                    style: const TextStyle(color: AppColors.danger, fontSize: 14),
                   ),
                   SizedBox(height: 24),
                   ElevatedButton(
@@ -106,7 +107,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ? Icons.person
                                       : Icons.admin_panel_settings,
                                   size: 40,
-                                  color: Color(0xFF6200EE),
+                                  color: AppColors.primary,
                                 ),
                                 SizedBox(width: 16),
                                 Expanded(
@@ -124,7 +125,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         authProvider.isStudent ? 'Student' : 'Manager',
                                         style: TextStyle(
                                           fontSize: 14,
-                                          color: Colors.grey[600],
+                                          color: AppColors.inkMuted,
                                         ),
                                       ),
                                       if (authProvider.isStudent)
@@ -132,7 +133,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                           'ID: ${authProvider.enrollmentId}',
                                           style: TextStyle(
                                             fontSize: 12,
-                                            color: Colors.grey[500],
+                                            color: AppColors.inkMuted,
                                           ),
                                         ),
                                     ],
@@ -164,7 +165,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             SizedBox(height: 16),
                             Row(
                               children: [
-                                Icon(Icons.restaurant, color: Color(0xFF6200EE)),
+                                Icon(Icons.restaurant, color: AppColors.primary),
                                 SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
@@ -174,7 +175,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         'Mess Name',
                                         style: TextStyle(
                                           fontSize: 12,
-                                          color: Colors.grey[600],
+                                          color: AppColors.inkMuted,
                                         ),
                                       ),
                                       Text(
@@ -192,7 +193,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             SizedBox(height: 12),
                             Row(
                               children: [
-                                Icon(Icons.code, color: Color(0xFF6200EE)),
+                                Icon(Icons.code, color: AppColors.primary),
                                 SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
@@ -202,7 +203,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         'Mess Code',
                                         style: TextStyle(
                                           fontSize: 12,
-                                          color: Colors.grey[600],
+                                          color: AppColors.inkMuted,
                                         ),
                                       ),
                                       Text(
@@ -220,7 +221,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             SizedBox(height: 12),
                             Row(
                               children: [
-                                Icon(Icons.badge, color: Color(0xFF6200EE)),
+                                Icon(Icons.badge, color: AppColors.primary),
                                 SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
@@ -230,7 +231,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         'Manager Name',
                                         style: TextStyle(
                                           fontSize: 12,
-                                          color: Colors.grey[600],
+                                          color: AppColors.inkMuted,
                                         ),
                                       ),
                                       Text(
@@ -248,7 +249,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             SizedBox(height: 12),
                             Row(
                               children: [
-                                Icon(Icons.email, color: Color(0xFF6200EE)),
+                                Icon(Icons.email, color: AppColors.primary),
                                 SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
@@ -258,7 +259,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         'Manager Email',
                                         style: TextStyle(
                                           fontSize: 12,
-                                          color: Colors.grey[600],
+                                          color: AppColors.inkMuted,
                                         ),
                                       ),
                                       Text(
@@ -299,7 +300,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           _buildActionCard(
                             icon: Icons.qr_code_scanner,
                             title: 'Mark Attendance',
-                            color: Color(0xFF6200EE),
+                            color: AppColors.primary,
                             onTap: () {
                               final slot = getCurrentMealSlot();
                               if (slot == null) {
@@ -324,7 +325,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           _buildActionCard(
                             icon: Icons.star,
                             title: 'Submit Review',
-                            color: Color(0xFFFF6B6B),
+                            color: AppColors.danger,
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
@@ -336,7 +337,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           _buildActionCard(
                             icon: Icons.restaurant_menu,
                             title: 'View Menu',
-                            color: Color(0xFF03DAC6),
+                            color: AppColors.accent,
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
@@ -348,7 +349,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           _buildActionCard(
                             icon: Icons.bar_chart,
                             title: 'Analytics & Predictions',
-                            color: Color(0xFF9C27B0),
+                            color: AppColors.primary,
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
@@ -380,7 +381,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           _buildActionCard(
                             icon: Icons.show_chart,
                             title: 'Prediction + Analysis',
-                            color: Color(0xFF6200EE),
+                            color: AppColors.primary,
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
@@ -394,7 +395,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           _buildActionCard(
                             icon: Icons.qr_code,
                             title: 'Generate QR',
-                            color: Color(0xFF6200EE),
+                            color: AppColors.primary,
                             onTap: () {
                               final slot = getCurrentMealSlot();
                               if (slot == null) {
@@ -419,7 +420,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           _buildActionCard(
                             icon: Icons.checklist,
                             title: 'Mark Attendance',
-                            color: Color(0xFFFF6B6B),
+                            color: AppColors.danger,
                             onTap: () {
                               final slot = getCurrentMealSlot();
                               if (slot == null) {
@@ -443,7 +444,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           _buildActionCard(
                             icon: Icons.menu_book,
                             title: 'Create Menu',
-                            color: Color(0xFF03DAC6),
+                            color: AppColors.accent,
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
@@ -469,7 +470,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         icon: Icon(Icons.logout),
                         label: Text('Logout'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
+                          backgroundColor: AppColors.danger,
+                          foregroundColor: Colors.white,
                           padding: EdgeInsets.symmetric(vertical: 12),
                         ),
                       ),
@@ -486,8 +488,8 @@ class _HomeScreenState extends State<HomeScreen> {
           body: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.login, size: 64, color: Colors.grey),
+                children: [
+                Icon(Icons.login, size: 64, color: AppColors.inkMuted),
                 SizedBox(height: 16),
                 Text('Please login to continue'),
                 SizedBox(height: 24),
@@ -538,3 +540,4 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
+

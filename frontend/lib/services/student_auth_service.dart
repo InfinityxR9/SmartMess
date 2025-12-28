@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:smart_mess/utils/logger.dart';
 
 class StudentAuthService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -10,7 +11,7 @@ class StudentAuthService {
     String dateOfBirth,
   ) async {
     try {
-      print('[StudentAuth] Authenticating: $enrollmentId');
+      logDebug('[StudentAuth] Authenticating: $enrollmentId');
 
       // Query students collection where enrollmentId matches
       final query = await _firestore
@@ -21,7 +22,7 @@ class StudentAuthService {
           .get();
 
       if (query.docs.isEmpty) {
-        print('[StudentAuth] Student not found: $enrollmentId');
+        logDebug('[StudentAuth] Student not found: $enrollmentId');
         return null;
       }
 
@@ -30,11 +31,11 @@ class StudentAuthService {
 
       // Verify date of birth matches
       if (!_dobMatches(storedDob, dateOfBirth)) {
-        print('[StudentAuth] DOB mismatch for $enrollmentId');
+        logDebug('[StudentAuth] DOB mismatch for $enrollmentId');
         return null;
       }
 
-      print('[StudentAuth] Authentication successful: ${userData['name']}');
+      logDebug('[StudentAuth] Authentication successful: ${userData['name']}');
       
       // Return user data with ID
       return {
@@ -42,7 +43,7 @@ class StudentAuthService {
         ...userData,
       };
     } catch (e) {
-      print('[StudentAuth] Authentication error: $e');
+      logError('[StudentAuth] Authentication error: $e');
       return null;
     }
   }
@@ -50,12 +51,12 @@ class StudentAuthService {
   /// Get student's mess information from loginCredentials
   Future<Map<String, dynamic>?> getStudentMessInfo(String messId) async {
     try {
-      print('[StudentAuth] Getting mess info for: $messId');
+      logDebug('[StudentAuth] Getting mess info for: $messId');
       
       final messDoc = await _firestore.collection('messes').doc(messId).get();
       
       if (!messDoc.exists) {
-        print('[StudentAuth] Mess not found: $messId');
+        logDebug('[StudentAuth] Mess not found: $messId');
         return null;
       }
 
@@ -94,7 +95,7 @@ class StudentAuthService {
         'managerEmail': managerInfo?['email'],
       };
     } catch (e) {
-      print('[StudentAuth] Error getting mess info: $e');
+      logError('[StudentAuth] Error getting mess info: $e');
       return null;
     }
   }
@@ -121,7 +122,7 @@ class StudentAuthService {
               })
           .toList();
     } catch (e) {
-      print('[StudentAuth] Error getting messes: $e');
+      logError('[StudentAuth] Error getting messes: $e');
       return [];
     }
   }

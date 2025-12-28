@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_mess/providers/unified_auth_provider.dart';
+import 'package:smart_mess/theme/app_tokens.dart';
 
 class MenuCreationScreen extends StatefulWidget {
   const MenuCreationScreen({Key? key}) : super(key: key);
@@ -238,7 +239,7 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
                         'Choose the date and meal type. Only that meal changes for the selected date.',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.grey[600],
+                          color: AppColors.inkMuted,
                         ),
                       ),
                     ],
@@ -249,7 +250,7 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
               Card(
                 elevation: 1,
                 child: ListTile(
-                  leading: const Icon(Icons.calendar_today, color: Color(0xFF6200EE)),
+                  leading: const Icon(Icons.calendar_today, color: AppColors.primary),
                   title: const Text('Select Date'),
                   subtitle: Text(_formatReadableDate(_selectedDate)),
                   onTap: _pickDate,
@@ -296,18 +297,18 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
               const SizedBox(height: 16),
               if (_hasCustomOverride)
                 Card(
-                  color: Colors.orange.shade50,
+                  color: AppColors.secondary.withValues(alpha: 0.12),
                   child: Padding(
                     padding: const EdgeInsets.all(12),
                     child: Text(
                       'A custom menu already exists for this date and meal. Saving will replace it.',
-                      style: TextStyle(color: Colors.orange.shade900, fontSize: 12),
+                      style: const TextStyle(color: AppColors.primary, fontSize: 12),
                     ),
                   ),
                 ),
               if (_hasCustomOverride) const SizedBox(height: 16),
               Card(
-                color: Colors.grey.shade50,
+                color: AppColors.surfaceAlt,
                 child: Padding(
                   padding: const EdgeInsets.all(12),
                   child: Column(
@@ -329,7 +330,7 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
                           children: standardItems
                               .map((item) => Chip(
                                     label: Text(item),
-                                    backgroundColor: Colors.white,
+                                    backgroundColor: AppColors.surface,
                                   ))
                               .toList(),
                         ),
@@ -342,17 +343,23 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: _isSuccess ? Colors.green.shade50 : Colors.red.shade50,
+                    color: _isSuccess
+                        ? AppColors.success.withValues(alpha: 0.12)
+                        : AppColors.danger.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: _isSuccess ? Colors.green.shade200 : Colors.red.shade200,
+                      color: _isSuccess
+                          ? AppColors.success.withValues(alpha: 0.35)
+                          : AppColors.danger.withValues(alpha: 0.35),
                     ),
                   ),
                   child: Row(
                     children: [
                       Icon(
                         _isSuccess ? Icons.check_circle : Icons.error_outline,
-                        color: _isSuccess ? Colors.green : Colors.red,
+                        color: _isSuccess
+                            ? AppColors.success
+                            : AppColors.danger,
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -360,8 +367,8 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
                           _message!,
                           style: TextStyle(
                             color: _isSuccess
-                                ? Colors.green.shade900
-                                : Colors.red.shade900,
+                                ? AppColors.success
+                                : AppColors.danger,
                             fontSize: 14,
                           ),
                         ),
@@ -376,7 +383,8 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
                 onPressed: _isSaving ? null : _saveMenu,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 12),
-                  backgroundColor: const Color(0xFF6200EE),
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
                 ),
               ),
             ],
@@ -386,3 +394,4 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
     );
   }
 }
+

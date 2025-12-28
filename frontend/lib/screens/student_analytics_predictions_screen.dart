@@ -8,6 +8,12 @@ import 'package:smart_mess/services/review_service.dart';
 import 'package:smart_mess/models/prediction_model.dart';
 import 'package:smart_mess/utils/meal_time.dart';
 import 'package:smart_mess/widgets/reviews_tab.dart';
+import 'package:smart_mess/theme/app_tokens.dart';
+import 'package:smart_mess/widgets/animated_metric_bar.dart';
+import 'package:smart_mess/widgets/empty_state.dart';
+import 'package:smart_mess/widgets/section_header.dart';
+import 'package:smart_mess/widgets/skeleton_loader.dart';
+import 'package:smart_mess/widgets/staggered_fade_in.dart';
 
 class StudentAnalyticsPredictionsScreen extends StatefulWidget {
   final bool includeScaffold;
@@ -84,21 +90,13 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
   }
 
   Future<PredictionResult?> _loadPredictions(String slotType) async {
-    await _predictionService.trainModel(
+    return _predictionService.trainAndPredict(
       _messId,
       slot: slotType,
       capacity: _messCapacity,
       minutesBack: 15,
       asyncTrain: false,
       forceTrain: true,
-    );
-    return _predictionService.getPrediction(
-      _messId,
-      slot: slotType,
-      capacity: _messCapacity,
-      minutesBack: 15,
-      autoTrain: false,
-      asyncTrain: false,
     );
   }
 
@@ -185,88 +183,95 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
   }
 
   Widget _buildPredictionsSection() {
+    final textTheme = Theme.of(context).textTheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Upcoming 15-Min Slot Predictions',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        const SectionHeader(
+          title: 'Upcoming 15-Min Slot Predictions',
+          icon: Icons.insights,
         ),
         const SizedBox(height: 12),
         FutureBuilder<PredictionResult?>(
           future: _predictions,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
+              return const SkeletonList(itemCount: 2, lineCount: 1);
             }
 
             final prediction = snapshot.data;
             if (prediction == null || prediction.predictions.isEmpty) {
-              return Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Text('No predictions available. Check back during meal times.'),
+              return const EmptyStateCard(
+                icon: Icons.bar_chart,
+                title: 'No predictions available',
+                message: 'Check back during meal times for updates.',
               );
             }
 
             return Column(
-              children: prediction.predictions.map((pred) {
+              children: prediction.predictions.asMap().entries.map((entry) {
+                final index = entry.key;
+                final pred = entry.value;
                 final isBad = pred.crowdPercentage > 70;
                 final isModerate = pred.crowdPercentage > 40;
+                final crowdColor = isBad
+                    ? AppColors.danger
+                    : isModerate
+                        ? AppColors.warning
+                        : AppColors.success;
 
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: isBad
-                          ? Colors.red.shade300
-                          : isModerate
-                              ? Colors.orange.shade300
-                              : Colors.green.shade300,
-                    ),
-                    borderRadius: BorderRadius.circular(8),
-                    color: isBad
-                        ? Colors.red.shade50
-                        : isModerate
-                            ? Colors.orange.shade50
-                            : Colors.green.shade50,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                return StaggeredFadeIn(
+                  index: index,
+                  child: Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
                         children: [
-                          Text(
-                            pred.timeSlot,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: crowdColor.withValues(alpha: 0.16),
+                              borderRadius: BorderRadius.circular(AppRadii.sm),
+                            ),
+                            child: Icon(
+                              Icons.people,
+                              color: crowdColor,
+                              size: 28,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(pred.timeSlot, style: textTheme.titleSmall),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${pred.predictedCrowd.toStringAsFixed(0)} students expected',
+                                  style: textTheme.bodySmall?.copyWith(
+                                    color: AppColors.inkMuted,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                AnimatedMetricBar(
+                                  percentage: pred.crowdPercentage,
+                                  color: crowdColor,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
                           Text(
-                            '${pred.predictedCrowd.toStringAsFixed(0)} students expected',
-                            style: TextStyle(color: Colors.grey[700], fontSize: 12),
+                            '${pred.crowdPercentage.toStringAsFixed(0)}%',
+                            style: textTheme.titleMedium?.copyWith(
+                              color: crowdColor,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ],
                       ),
-                      Text(
-                        '${pred.crowdPercentage.toStringAsFixed(0)}%',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: isBad
-                              ? Colors.red
-                              : isModerate
-                                  ? Colors.orange
-                                  : Colors.green,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 );
               }).toList(),
@@ -283,6 +288,7 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
     required bool showReviews,
   }) {
     final slot = _currentSlot;
+    final textTheme = Theme.of(context).textTheme;
     final noDataMessage = showAnalytics && showPredictions
         ? 'No analytics or predictions available outside meal hours'
         : showAnalytics
@@ -303,7 +309,7 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
                 children: [
                   Icon(
                     slot == null ? Icons.access_time : Icons.restaurant,
-                    color: const Color(0xFF6200EE),
+                    color: AppColors.primary,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -311,7 +317,7 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
                       slot == null
                           ? 'Outside meal hours. Analytics show only during meal slots.'
                           : 'Current Slot: ${slot.label} (${slot.window})',
-                      style: const TextStyle(fontWeight: FontWeight.w600),
+                      style: textTheme.titleSmall,
                     ),
                   ),
                 ],
@@ -320,7 +326,11 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
           ),
           const SizedBox(height: 20),
           if (slot == null)
-            Text(noDataMessage)
+            EmptyStateCard(
+              icon: Icons.schedule,
+              title: 'No data right now',
+              message: noDataMessage,
+            )
           else if (!showAnalytics && showPredictions)
             _buildPredictionsSection()
           else
@@ -328,11 +338,15 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
               future: _analyticsData,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const SkeletonList(itemCount: 2, lineCount: 2);
                 }
 
                 if (snapshot.hasError) {
-                  return const Center(child: Text('Unable to load analytics'));
+                  return const EmptyStateCard(
+                    icon: Icons.warning_amber,
+                    title: 'Unable to load analytics',
+                    message: 'Please try again in a moment.',
+                  );
                 }
 
                 final data = snapshot.data ?? {};
@@ -343,7 +357,8 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
                     if (showAnalytics) ...[
                       Text(
                         'Date: ${data['date'] ?? ''}',
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        style:
+                            textTheme.bodySmall?.copyWith(color: AppColors.inkMuted),
                       ),
                       const SizedBox(height: 12),
                       Row(
@@ -391,9 +406,9 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
                     if (showPredictions) _buildPredictionsSection(),
                     if (showReviews) ...[
                       const SizedBox(height: 24),
-                      const Text(
-                        'Recent Reviews',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      const SectionHeader(
+                        title: 'Recent Reviews',
+                        icon: Icons.rate_review,
                       ),
                       const SizedBox(height: 12),
                       if ((data['reviews'] as List?)?.isNotEmpty ?? false)
@@ -405,51 +420,61 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
                             final reviewData = (data['reviews'] as List?)?[index];
                             if (reviewData == null) return const SizedBox.shrink();
 
-                            return Card(
-                              child: Padding(
-                                padding: const EdgeInsets.all(12),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        const Text(
-                                          'Anonymous',
-                                          style: TextStyle(fontWeight: FontWeight.bold),
-                                        ),
-                                        Row(
-                                          children: List.generate(
-                                            5,
-                                            (i) => Icon(
-                                              Icons.star,
-                                              size: 16,
-                                              color: i < (reviewData['rating'] as int? ?? 0)
-                                                  ? Colors.amber
-                                                  : Colors.grey,
+                            return StaggeredFadeIn(
+                              index: index,
+                              child: Card(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text('Anonymous', style: textTheme.titleSmall),
+                                          Row(
+                                            children: List.generate(
+                                              5,
+                                              (i) => Icon(
+                                                Icons.star,
+                                                size: 16,
+                                                color:
+                                                    i < (reviewData['rating'] as int? ?? 0)
+                                                        ? AppColors.secondary
+                                                        : AppColors.outlineSubtle,
+                                              ),
                                             ),
                                           ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        reviewData['comment'] ?? '',
+                                        style: textTheme.bodyMedium?.copyWith(
+                                          color: AppColors.inkMuted,
                                         ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      reviewData['comment'] ?? '',
-                                      style: TextStyle(color: Colors.grey[700]),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      _formatMarkedTime(reviewData['submittedAt']),
-                                      style: const TextStyle(fontSize: 10, color: Colors.grey),
-                                    ),
-                                  ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        _formatMarkedTime(reviewData['submittedAt']),
+                                        style: textTheme.bodySmall?.copyWith(
+                                          color: AppColors.inkMuted,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             );
                           },
                         )
                       else
-                        const Text('No reviews yet for this slot'),
+                        const EmptyStateCard(
+                          icon: Icons.star_border,
+                          title: 'No reviews yet',
+                          message: 'Feedback will show up once students submit reviews.',
+                        ),
                     ],
                   ],
                 );
@@ -472,11 +497,7 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
           appBar: AppBar(
             title: const Text('Analytics & Predictions'),
             elevation: 0,
-            backgroundColor: const Color(0xFF6200EE),
             bottom: const TabBar(
-              labelColor: Colors.white,
-              unselectedLabelColor: Colors.white70,
-              indicatorColor: Colors.white,
               tabs: [
                 Tab(text: 'Reviews'),
                 Tab(text: 'Predictions'),
@@ -517,7 +538,6 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
       appBar: AppBar(
         title: const Text('Analytics & Predictions'),
         elevation: 0,
-        backgroundColor: const Color(0xFF6200EE),
       ),
       body: content,
     );
@@ -542,17 +562,25 @@ class _StatCard extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         child: Column(
           children: [
-            Icon(icon, color: Colors.purple, size: 24),
+            Icon(icon, color: AppColors.secondary, size: 24),
             const SizedBox(height: 8),
             Text(
               value,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
             ),
             const SizedBox(height: 4),
-            Text(title, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.inkMuted,
+                  ),
+            ),
           ],
         ),
       ),
     );
   }
 }
+
