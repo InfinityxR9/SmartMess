@@ -201,8 +201,8 @@ SMARTMESS/
 
 ## Team
 
-- [Aryan Sisodiya]('https://github.com/InfinityxR')
--  [Daksh Rathi]('https://github.com/dakshrathi-india')
+- [Aryan Sisodiya](https://github.com/InfinityxR)
+-  [Daksh Rathi](https://github.com/dakshrathi-india)
 
 ## Learning Resources
 

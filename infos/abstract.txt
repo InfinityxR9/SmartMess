@@ -1,0 +1,10 @@
+SmartMess – Crowd-Aware and Data-Driven Mess Management System
+
+Description:
+
+SmartMess is an intelligent mess management system designed to improve food quality, reduce wastage, and enhance the student dining experience using real-time data. The primary aim of the project is to analyze crowd levels in the mess by comparing live attendance with available seating capacity and predict the best time for students to have their meals. This helps avoid overcrowding, ensures smoother meal distribution, and prevents sudden high demand that often degrades food quality.
+
+In addition, SmartMess enables students to provide food feedback, helping mess authorities continuously improve meal quality. The system also collects data from students who opt out of specific meals, allowing the mess to prepare food more accurately and significantly reduce wastage. Daily menus are displayed digitally for easy access. Overall, SmartMess creates a more efficient, transparent, and sustainable mess ecosystem for both students and administrators.
+----------------------------------------------------------------------
+
+SmartMess is a data-driven mess management system that predicts crowd levels to suggest the best dining time, improves food quality, reduces wastage using meal opt-outs and feedback, and displays daily menus digitally.
