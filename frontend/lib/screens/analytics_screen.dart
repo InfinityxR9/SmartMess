@@ -42,14 +42,11 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     _predictions = _loadPredictions(slot?.type);
   }
 
-  Future<PredictionResult?> _loadPredictions(String? slot) async {
-    return _predictionService.trainAndPredict(
+  Future<PredictionResult?> _loadPredictions(String? mealType) async {
+    return _predictionService.getPrediction(
       widget.messId,
-      slot: slot,
+      mealType: mealType,
       capacity: _messCapacity,
-      minutesBack: 15,
-      asyncTrain: false,
-      forceTrain: true,
     );
   }
 

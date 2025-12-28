@@ -90,13 +90,10 @@ class _StudentAnalyticsPredictionsScreenState extends State<StudentAnalyticsPred
   }
 
   Future<PredictionResult?> _loadPredictions(String slotType) async {
-    return _predictionService.trainAndPredict(
+    return _predictionService.getPrediction(
       _messId,
-      slot: slotType,
+      mealType: slotType,
       capacity: _messCapacity,
-      minutesBack: 15,
-      asyncTrain: false,
-      forceTrain: true,
     );
   }
 

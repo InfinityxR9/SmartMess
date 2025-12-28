@@ -35,7 +35,7 @@ class _CrowdDashboardScreenState extends State<CrowdDashboardScreen> {
         final slot = getCurrentMealSlot();
         predictionProvider.fetchPrediction(
           messProvider.selectedMess!.id,
-          slot: slot?.type,
+          mealType: slot?.type,
           capacity: messProvider.selectedMess!.capacity,
         );
       }

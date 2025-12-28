@@ -9,6 +9,27 @@ class PredictionResult {
     this.bestSlot,
   });
 
+  static TimeSlotPrediction? _pickBestSlot(List<TimeSlotPrediction> predictions) {
+    if (predictions.isEmpty) return null;
+    TimeSlotPrediction best = predictions.first;
+    double bestScore = _slotScore(best);
+    for (final slot in predictions.skip(1)) {
+      final score = _slotScore(slot);
+      if (score < bestScore) {
+        best = slot;
+        bestScore = score;
+      }
+    }
+    return best;
+  }
+
+  static double _slotScore(TimeSlotPrediction slot) {
+    if (slot.crowdPercentage > 0) {
+      return slot.crowdPercentage;
+    }
+    return slot.predictedCrowd;
+  }
+
   factory PredictionResult.fromJson(Map<String, dynamic> json) {
     final predictions = <TimeSlotPrediction>[];
     final rawPredictions = json['predictions'];
@@ -28,6 +49,9 @@ class PredictionResult {
       bestSlot = TimeSlotPrediction.fromJson(bestSlotRaw);
     } else if (bestSlotRaw is Map) {
       bestSlot = TimeSlotPrediction.fromJson(Map<String, dynamic>.from(bestSlotRaw));
+    }
+    if (bestSlot == null && predictions.isNotEmpty) {
+      bestSlot = _pickBestSlot(predictions);
     }
 
     return PredictionResult(

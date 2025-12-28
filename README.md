@@ -1,8 +1,10 @@
-# SmartMess - Mess Crowd Management System
+# SmartMess
 
-**Version**: 1.0  
+SmartMess is a mess crowd management system that combines a Flutter web front end, a Flask prediction API, and optional ML models to help students and managers choose the best time to eat.
+
+**Version**: 2.0.0  
 **Status**: Production Ready ✅  
-**Last Updated**: 2025-12-23
+**Last Updated**: 28-12-2025
 
 ## Overview
 
@@ -14,58 +16,13 @@ SmartMess is an intelligent mess management system featuring:
 - ☁️ Firebase backend
 - 📈 ML-powered predictions
 
-## Quick Start
+## Highlights
 
-### Backend Crowd Prediction API
-
-```bash
-# Start the backend server
-cd backend
-python main.py
-# Server runs on http://localhost:8080
-```
-
-### Train Crowd Prediction Models
-
-```bash
-# Train model for a specific mess
-cd ml_model
-python train_tensorflow.py alder
-python train_tensorflow.py oak
-```
-
-### Test Predictions
-
-```bash
-curl -X POST http://localhost:8080/predict \
-  -H "Content-Type: application/json" \
-  -d '{"messId": "alder"}'
-```
-
-## Project Structure
-
-```
-SMARTMESS/
-├── backend/                    # Flask API server
-│   ├── main.py                # API endpoints
-│   ├── prediction_model_tf.py  # TensorFlow integration
-│   └── requirements.txt
-├── ml_model/                   # Machine learning pipeline
-│   ├── .venv/                  # Virtual environment
-│   ├── train_tensorflow.py      # Training script
-│   ├── mess_prediction_model.py # Inference model
-│   ├── models/                 # Trained models
-│   └── requirements.txt
-├── frontend/                   # Flutter mobile app
-│   ├── lib/                    # Source code
-│   ├── pubspec.yaml           # Dependencies
-│   └── build/                 # Built app
-├── docs/                       # Documentation
-│   ├── TENSORFLOW_IMPLEMENTATION.md
-│   ├── TENSORFLOW_IMPLEMENTATION_REPORT.md
-│   └── TENSORFLOW_QUICK_REFERENCE.md
-└── README.md                   # This file
-```
+- Meal-aware crowd predictions (15-minute slots)
+- Real-time crowd dashboards and attendance tracking
+- QR-based check-ins and feedback collection
+- Manager and student portals
+- Firebase-backed data storage (auth, attendance, reviews, menus)
 
 ## Core Features
 
@@ -83,83 +40,19 @@ SMARTMESS/
 - Each mess model trained on its own data only
 - Complete privacy and isolation
 
-### 📊 Architecture
+### 📱 QR Code Integration: 
+- Quick entry logging with staff verification
+### ⭐ Feedback System: 
+- Real-time rating aggregation and display
+### 📋 Menu Management: 
+- Daily menu tracking and updates
 
-**Neural Network**:
-```
-Input (3 features) → Dense(32) + Dropout → Dense(16) + Dropout → Dense(8) → Output
-```
+## Architecture
 
-**Features**: Hour, Day of Week, Meal Type  
-**Output**: Predicted crowd count
-
-## API Endpoints
-
-### POST /predict
-Get crowd predictions for a specific mess.
-
-```json
-{
-  "messId": "alder"
-}
-```
-
-Response includes current crowd, capacity, and 15-minute slot predictions.
-
-### GET /model-info?messId=alder
-Get model training metadata and statistics.
-
-## Documentation
-
-| File | Purpose |
-|------|---------|
-| [TENSORFLOW_QUICK_REFERENCE.md](docs/TENSORFLOW_QUICK_REFERENCE.md) | Quick commands and examples |
-| [TENSORFLOW_IMPLEMENTATION.md](docs/TENSORFLOW_IMPLEMENTATION.md) | Complete technical guide |
-| [TENSORFLOW_IMPLEMENTATION_REPORT.md](docs/TENSORFLOW_IMPLEMENTATION_REPORT.md) | Test results and performance |
-
-## Deployment
-
-### Requirements
-
-- Python 3.13+
-- TensorFlow 2.20.0+
-- Firebase project with Firestore
-- Virtual environment configured
-
-### Steps
-
-1. **Activate ML environment**:
-   ```bash
-   cd ml_model
-   .\.venv\Scripts\activate  # Windows
-   ```
-
-2. **Train models for all messes**:
-   ```bash
-   python train_tensorflow.py alder
-   python train_tensorflow.py oak
-   python train_tensorflow.py elm
-   ```
-
-3. **Start backend server**:
-   ```bash
-   cd ../backend
-   python main.py
-   ```
-
-4. **Test API**:
-   ```bash
-   curl http://localhost:8080/model-info?messId=alder
-   ```
-
-## Performance
-
-- **Training**: 2-5 seconds per mess
-- **Prediction Latency**: <100ms
-- **Throughput**: >100 requests/second
-- **Model Size**: ~50KB per mess
-- **Training Loss**: 0.0005 (excellent)
-- **Mean Error**: 0.017 students
+- frontend/ - Flutter web UI
+- backend/ - Flask API for predictions and health checks
+- ml_model/ - Training scripts and model artifacts
+- Firebase - Auth and Firestore for app data
 
 ## Technologies
 
@@ -171,351 +64,157 @@ Get model training metadata and statistics.
 | Database | Firebase Firestore |
 | Deployment | Docker-ready |
 
-## Project Status
+## API
 
-- ✅ TensorFlow model implementation complete
-- ✅ Mess-specific training & prediction working
-- ✅ Backend API integration complete
-- ✅ Full end-to-end pipeline tested
-- ✅ Documentation comprehensive
-- ✅ Production ready
+Base URL: `http://localhost:8080` by default.
 
-## Next Steps
+### GET /health
 
-1. Train models for all production messes
-2. Deploy backend to production server
-3. Update frontend to use mess-specific predictions
-4. Monitor model performance and predictions
+Returns service status.
 
-## Support
+### POST /predict
 
-For detailed information:
-- **Quick start**: See [TENSORFLOW_QUICK_REFERENCE.md](docs/TENSORFLOW_QUICK_REFERENCE.md)
-- **Technical details**: See [TENSORFLOW_IMPLEMENTATION.md](docs/TENSORFLOW_IMPLEMENTATION.md)
-- **Test results**: See [TENSORFLOW_IMPLEMENTATION_REPORT.md](docs/TENSORFLOW_IMPLEMENTATION_REPORT.md)
+Request body:
 
----
-
-**SmartMess** - Intelligent Mess Management System  
-Built with ❤️ using TensorFlow & Flask
-
-# SmartMess - AI-Powered Mess Management System
-
-![Flutter Web](https://img.shields.io/badge/Flutter-Web-blue.svg)
-![Firebase](https://img.shields.io/badge/Firebase-Realtime%20DB-orange.svg)
-![Python](https://img.shields.io/badge/Python-3.10+-green.svg)
-![Cloud Run](https://img.shields.io/badge/Google%20Cloud-Run-4285F4.svg)
-
-## 📱 Project Overview
-
-**SmartMess** is a comprehensive mess management system for educational institutions that combines real-time crowd tracking, AI-powered predictions, and student feedback to optimize dining experiences.
-
-### ✨ Key Features
-
-- 🤖 **Real-Time AI Predictions**: Fresh crowd forecasts on every page load (15-minute granularity)
-- 📊 **Real-time Dashboard**: Live crowd metrics and capacity tracking
-- 🔐 **QR Code Integration**: Quick entry logging with staff verification
-- ⭐ **Feedback System**: Real-time rating aggregation and display
-- 📋 **Menu Management**: Daily menu tracking and updates
-- 🗺️ **Google Maps Integration**: Location-based mess information
-
-
-## 🏗️ Architecture
-
-```
-┌─────────────────────────────────────────────────────────┐
-│            Flutter Web Frontend (UI Layer)               │
-│        - Real-time dashboards                           │
-│        - QR scanning / Manual entry                     │
-│        - Feedback forms                                 │
-└────────────┬──────────────────────┬────────────────────┘
-             │                      │
-             ├─────────────────┐    │
-             │                 │    │
-    ┌────────▼─────┐  ┌───────▼──────┐
-    │   Firebase   │  │ Flask API    │
-    │  Firestore   │  │ (Cloud Run)  │
-    │  + Auth      │  │              │
-    └──────────────┘  └───────┬──────┘
-                              │
-                      ┌───────▼──────┐
-                      │ TensorFlow   │
-                      │ Model        │
-                      │ Predictions  │
-                      └──────────────┘
+```json
+{
+  "messId": "alder",
+  "mealType": "lunch",
+  "capacity": 120
+}
 ```
 
-## 🚀 Quick Start
+Response (shape):
+
+```json
+{
+  "messId": "alder",
+  "mealType": "lunch",
+  "capacity": 120,
+  "predictions": [
+    {
+      "time_slot": "12:15 PM",
+      "time_24h": "12:15",
+      "predicted_crowd": 40,
+      "crowd_percentage": 33.3,
+      "confidence": "low",
+      "recommendation": "Good time"
+    }
+  ],
+  "timestamp": "2025-01-01T12:00:00Z"
+}
+```
+
+## Meal Windows
+
+- Breakfast: 07:30-09:30
+- Lunch: 12:00-14:00
+- Dinner: 19:30-21:30
+
+## Local Development
 
 ### Prerequisites
 
-- Flutter 3.0+
+- Flutter 3.x (Dart >= 3.0)
 - Python 3.10+
-- Node.js 16+
-- Firebase Account
-- Google Cloud Account
+- Firebase project for auth and Firestore (already configured in `frontend/lib/firebase_options.dart`)
 
-### Installation
+### 1) Run the backend API
 
 ```bash
-# Clone repository
-git clone https://github.com/yourusername/smartmess.git
-cd smartmess
-
-# Frontend setup
-cd frontend
-flutter pub get
-flutter run -d chrome
-
-# Backend setup (new terminal)
 cd backend
+python -m venv .venv
+.\.venv\Scripts\activate  # Windows
 pip install -r requirements.txt
 python main.py
+```
 
-# ML Model training (new terminal)
+The API runs on `http://localhost:8080`.
+
+### 2) Run the Flutter web app
+
+```bash
+cd frontend
+flutter pub get
+flutter run -d chrome --dart-define=SMARTMESS_BACKEND_URL=http://localhost:8080
+```
+
+### 3) Verify the prediction endpoint
+
+```bash
+curl -X POST http://localhost:8080/predict \
+  -H "Content-Type: application/json" \
+  -d "{\"messId\":\"alder\",\"mealType\":\"lunch\",\"capacity\":120}"
+```
+
+### 4) Reproduce the UI flow
+
+- Open the web app.
+- Navigate to the predictions section.
+- Confirm upcoming slot predictions render for the current meal.
+
+## Optional: Train ML Models
+
+If you want ML-backed predictions instead of the fallback logic:
+
+```bash
 cd ml_model
-pip install -r requirements.txt
-python train.py
+python train_tensorflow.py alder
+python train_tensorflow.py oak
 ```
 
-## 📚 Documentation
+The backend automatically uses ML predictions when models are available. If not, it falls back to meal-aware heuristics.
 
-- **[Setup Guide](docs/SETUP.md)** - Complete setup instructions
-- **[Firebase Setup](docs/FIREBASE_SETUP.md)** - Firebase configuration
-- **[Deployment Guide](docs/DEPLOYMENT.md)** - Deploy to production
-- **[API Documentation](docs/API_DOCUMENTATION.md)** - API reference
-- **[Project README](docs/README.md)** - Detailed project documentation
-
-## 🎯 Project Structure
-
-```
-smartmess/
-├── frontend/              # Flutter Web App
-├── backend/              # Flask API
-├── ml_model/             # TensorFlow Models
-├── docs/                 # Documentation
-└── README.md            # This file
-```
-
-## 🔧 Technology Stack
+## Configuration
 
 ### Frontend
-- **Flutter Web** - Cross-platform UI
-- **Provider** - State management
-- **Firebase** - Real-time database & auth
+
+- `SMARTMESS_BACKEND_URL` sets the prediction API base URL.
+
+Example (hosted frontend):
+
+```bash
+flutter run -d chrome --dart-define=SMARTMESS_BACKEND_URL=https://your-api.example.com
+```
 
 ### Backend
-- **Flask** - REST API framework
-- **Firebase Admin SDK** - Database access
-- **TensorFlow** - ML predictions
 
-### Infrastructure
-- **Firebase Hosting** - Frontend deployment
-- **Cloud Run** - Backend deployment
-- **Firestore** - Real-time database
-- **Docker** - Container orchestration
+- `PORT` sets the HTTP port (default: 8080).
 
-## 📊 Firestore Schema
+## Project Structure
 
 ```
-messes/
-  ├── {messId}
-  │   ├── name: String
-  │   ├── capacity: Integer
-  │   ├── latitude: Double
-  │   └── longitude: Double
-
-users/
-  ├── {uid}
-  │   └── homeMessId: String
-
-scans/
-  ├── {scanId}
-  │   ├── uid: String
-  │   ├── messId: String
-  │   └── ts: Timestamp
-
-ratings/
-  ├── {ratingId}
-  │   ├── uid: String
-  │   ├── messId: String
-  │   ├── score: Integer (1-5)
-  │   └── ts: Timestamp
-
-menus/
-  ├── {menuId}
-  │   ├── messId: String
-  │   ├── date: Timestamp
-  │   └── items: Array
-
-rating_summary/
-  ├── {messId}
-  │   ├── count: Integer
-  │   ├── sum: Integer
-  │   └── avg: Double
+SMARTMESS/
+  backend/      Flask API
+  frontend/     Flutter web app
+  ml_model/     ML training and model files
+  README.md     Project overview
 ```
 
-## 🎬 Demo Flow
+## Troubleshooting
 
-1. **Authentication** - Anonymous login
-2. **Mess Selection** - Choose your mess
-3. **Crowd Dashboard** - View live crowd and predictions
-4. **Entry Logging** - QR scan or manual entry
-5. **Menu Check** - Today's menu
-6. **Feedback** - Rate and comment
-7. **Map View** - Location information
+- Mixed content errors: hosted web apps must use an https backend URL.
+- Empty predictions: verify the server time and `mealType` match meal windows.
+- CORS issues: ensure the frontend origin is in the backend CORS allowlist.
 
-## 🌐 API Endpoints
+## Notes
 
-### Health Check
-```bash
-GET /health
-```
-
-### Crowd Prediction
-```bash
-POST /predict
-Content-Type: application/json
-
-{"messId": "mess_1"}
-```
-
-### Model Training
-```bash
-POST /train
-```
-
-## 🚢 Deployment
-
-### Firebase Hosting (Frontend)
-```bash
-cd frontend
-flutter build web --release
-firebase deploy --only hosting
-```
-
-### Cloud Run (Backend)
-```bash
-cd backend
-gcloud run deploy smartmess-api --source .
-```
-
-## 🧪 Testing
-
-```bash
-# Frontend tests
-cd frontend
-flutter test
-
-# Backend tests
-cd backend
-pytest tests/
-
-# API testing
-curl http://localhost:8080/health
-```
-
-## 📈 Performance
-
-- **Prediction Latency**: ~500ms
-- **Real-time Updates**: <100ms
-- **API Response Time**: ~200ms
-- **Model Training**: ~2-5 minutes
-
-## 🔒 Security Features
-
-- Anonymous authentication (Firebase)
-- Real-time security rules
-- API rate limiting
-- CORS protection
-- Input validation
-- Secure credentials management
-
-## 🐛 Troubleshooting
-
-### Issue: Firebase Connection Failed
-```
-Solution: Check firebase_options.dart configuration
-          Verify Anonymous Auth is enabled
-          Clear browser cache
-```
-
-### Issue: Prediction API Timeout
-```
-Solution: Verify Cloud Run service is running
-          Check API endpoint URL
-          Review Cloud Run logs
-```
-
-### Issue: TensorFlow Installation Error
-```
-Solution: pip install --upgrade pip
-          pip install tensorflow==2.13.0
-          Check Python version (3.10+)
-```
-
-See [SETUP.md](docs/SETUP.md) for more troubleshooting.
-
-## 📱 Features in Development
-
-- [ ] Push notifications for best times
-- [ ] Admin dashboard for staff
-- [ ] Loyalty points system
-- [ ] Historical analytics
-- [ ] Advanced ML models
-- [ ] Mobile app (iOS/Android)
-
-## 📊 Project Statistics
-
-- **Frontend**: 2000+ lines of Dart
-- **Backend**: 500+ lines of Python
-- **ML Models**: 300+ lines of Python
-- **Documentation**: 2000+ lines
-- **Total Code**: 5000+ lines
+- Meal windows are defined in `backend/main.py`.
+- Predictions are returned in 15-minute slots.
 
 ## 👥 Team
 
-- **Frontend Developer**: Flutter Web specialist
-- **Backend Developer**: Python/Flask expertise
-- **ML Engineer**: TensorFlow proficiency
-
-## 📝 License
-
-MIT License - See LICENSE file for details
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create feature branch: `git checkout -b feature/AmazingFeature`
-3. Commit changes: `git commit -m 'Add AmazingFeature'`
-4. Push to branch: `git push origin feature/AmazingFeature`
-5. Open Pull Request
-
-## 📞 Support & Contact
-
-- **Issues**: GitHub Issues
-- **Discussions**: GitHub Discussions
-- **Email**: support@smartmess.dev
+- [Aryan Sisodiya]('https://github.com/InfinityxR')
+-  [Daksh Rathi]('https://github.com/dakshrathi-india')
 
 ## 🎓 Learning Resources
 
 - [Flutter Documentation](https://flutter.dev)
 - [Firebase Guides](https://firebase.google.com/docs)
 - [TensorFlow Tutorials](https://www.tensorflow.org/tutorials)
-- [Cloud Run Docs](https://cloud.google.com/run/docs)
-
-## 🙏 Acknowledgments
-
-- Flutter and Firebase communities
-- TensorFlow developers
-- Google Cloud Platform support
 
 ---
-
 <div align="center">
 
 **Built with ❤️ for better mess management**
-
-[View Documentation](docs/README.md) • [Setup Guide](docs/SETUP.md) • [API Docs](docs/API_DOCUMENTATION.md)
-
 </div>

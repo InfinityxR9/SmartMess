@@ -14,7 +14,7 @@ class PredictionProvider extends ChangeNotifier {
 
   Future<void> fetchPrediction(
     String messId, {
-    String? slot,
+    String? mealType,
     int? capacity,
   }) async {
     try {
@@ -25,13 +25,10 @@ class PredictionProvider extends ChangeNotifier {
       if (messId.isEmpty) {
         _prediction = null;
       } else {
-        _prediction = await _predictionService.trainAndPredict(
+        _prediction = await _predictionService.getPrediction(
           messId,
-          slot: slot,
+          mealType: mealType,
           capacity: capacity,
-          minutesBack: 15,
-          asyncTrain: false,
-          forceTrain: true,
         );
       }
       _isLoading = false;

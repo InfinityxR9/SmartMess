@@ -32,14 +32,11 @@ class _PredictionScreenState extends State<PredictionScreen> {
     _predictions = _loadPredictions(authProvider.messId ?? '', slot?.type);
   }
 
-  Future<PredictionResult?> _loadPredictions(String messId, String? slot) async {
-    return _predictionService.trainAndPredict(
+  Future<PredictionResult?> _loadPredictions(String messId, String? mealType) async {
+    return _predictionService.getPrediction(
       messId,
-      slot: slot,
+      mealType: mealType,
       capacity: _messCapacity,
-      minutesBack: 15,
-      asyncTrain: false,
-      forceTrain: true,
     );
   }
 
