@@ -20,10 +20,6 @@ python -m http.server 8888
 Direct run: (debug)
 flutter run -d edge
 
-[MORE INTEGRATIONS and PROBLEMS]
-
-Add a proper "How to completely run project" in readme. that includes donwloading sdk, python.. etc, and installing dependencies, by means of creating venvs, etc..
-
 [Hosting]
 
 [RENDER]
