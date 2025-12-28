@@ -392,12 +392,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.info, color: AppColors.accent),
+                        const Icon(Icons.info, color: AppColors.primary),
                         const SizedBox(width: 12),
                         Text(
                           'Tips',
                           style: textTheme.titleMedium?.copyWith(
-                            color: AppColors.accent,
+                            color: AppColors.primary,
                           ),
                         ),
                       ],

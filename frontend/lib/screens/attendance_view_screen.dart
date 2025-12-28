@@ -215,7 +215,7 @@ class _AttendanceViewScreenState extends State<AttendanceViewScreen> {
                         child: ListTile(
                           leading: CircleAvatar(
                             backgroundColor: AppColors.secondary,
-                            foregroundColor: AppColors.primary,
+                            foregroundColor: AppColors.onColor(AppColors.secondary),
                             child: Text((index + 1).toString()),
                           ),
                           title: Text(student['studentName']?.toString() ?? 'Anonymous'),

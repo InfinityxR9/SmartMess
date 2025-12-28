@@ -240,7 +240,7 @@ class _QRGeneratorScreenState extends State<QRGeneratorScreen> {
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.info, color: AppColors.accent),
+                          const Icon(Icons.info, color: AppColors.primary),
                           SizedBox(width: 12),
                           Expanded(
                             child: Text(
@@ -248,7 +248,7 @@ class _QRGeneratorScreenState extends State<QRGeneratorScreen> {
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: AppColors.accent,
+                                color: AppColors.primary,
                               ),
                             ),
                           ),

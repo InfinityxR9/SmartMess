@@ -174,6 +174,18 @@ class _ManualAttendanceScreenState extends State<ManualAttendanceScreen> {
                 child: Column(
                   children: [
                     TabBar(
+                      labelColor: AppColors.ink,
+                      unselectedLabelColor: AppColors.inkMuted,
+                      indicatorSize: TabBarIndicatorSize.tab,
+                      indicatorPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                      indicator: BoxDecoration(
+                        color: AppColors.secondary.withValues(alpha: 0.28),
+                        borderRadius: BorderRadius.circular(AppRadii.sm),
+                        border: Border.all(
+                          color: AppColors.secondary.withValues(alpha: 0.6),
+                          width: 1,
+                        ),
+                      ),
                       tabs: [
                         Tab(child: Text('Individual Student')),
                         Tab(child: Text('Bulk Mark')),

@@ -278,12 +278,12 @@ class _PredictionScreenState extends State<PredictionScreen> {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.lightbulb, color: AppColors.warning),
+                        const Icon(Icons.lightbulb, color: AppColors.primary),
                         const SizedBox(width: 12),
                         Text(
                           'Tips for Better Experience',
                           style: textTheme.titleMedium?.copyWith(
-                            color: AppColors.warning,
+                            color: AppColors.primary,
                           ),
                         ),
                       ],
@@ -324,12 +324,12 @@ class _PredictionScreenState extends State<PredictionScreen> {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.psychology, color: AppColors.accent),
+                        const Icon(Icons.psychology, color: AppColors.primary),
                         const SizedBox(width: 12),
                         Text(
                           'How It Works',
                           style: textTheme.titleMedium?.copyWith(
-                            color: AppColors.accent,
+                            color: AppColors.primary,
                           ),
                         ),
                       ],
