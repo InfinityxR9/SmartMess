@@ -1,7 +1,6 @@
 import os
 import sys
 import threading
-import logging
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import firebase_admin
@@ -15,21 +14,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'ml_model'))
 from prediction_model_tf import PredictionService
 
 app = Flask(__name__)
-
-LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
-logging.basicConfig(
-    level=LOG_LEVEL,
-    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
-)
-logger = logging.getLogger("smartmess")
-app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
-
-def _env_value(name):
-    return os.environ.get(name, '').strip().lower()
-
-def is_production():
-    env = _env_value('APP_ENV') or _env_value('ENVIRONMENT') or _env_value('FLASK_ENV')
-    return env in ('prod', 'production')
 
 def get_allowed_origins():
     """
@@ -50,10 +34,6 @@ def get_allowed_origins():
             for origin in raw.split(",")
             if origin.strip()
         ]
-
-    if is_production():
-        logger.warning("CORS_ORIGINS not set in production; CORS will be disabled.")
-        return []
 
     # Local development fallback
     return [
@@ -90,27 +70,25 @@ def _resolve_firebase_credentials_path():
             return path
     return None
 
-FIRESTORE_AVAILABLE = False
-
 # Initialize Firebase
 try:
     credentials_path = _resolve_firebase_credentials_path()
     if credentials_path:
         cred = credentials.Certificate(credentials_path)
-        logger.info("[Firebase] Using service account: %s", credentials_path)
+        print(f"[Firebase] Using service account: {credentials_path}")
     else:
         cred = credentials.ApplicationDefault()
-        logger.info("[Firebase] Using application default credentials")
+        print("[Firebase] Using application default credentials")
 
     firebase_admin.initialize_app(cred)
     db = firestore.client()
-    FIRESTORE_AVAILABLE = True
 except Exception as e:
-    logger.warning("Firebase initialization failed: %s", e)
+    print(f"Warning: Firebase initialization failed: {e}")
     db = None
 
 # Initialize TensorFlow prediction service (mess-specific models)
 prediction_service = PredictionService()
+FIRESTORE_AVAILABLE = True
 _TRAINING_IN_PROGRESS = set()
 
 def _disable_firestore_if_needed(error):
@@ -132,7 +110,7 @@ def _disable_firestore_if_needed(error):
     ]
     if any(token in message for token in tokens):
         FIRESTORE_AVAILABLE = False
-        logger.warning("Firestore disabled due to credential error; falling back to degraded mode.")
+        print("[WARN] Firestore disabled due to credential error. Falling back to dummy data.")
 
 def _start_background_training(
     mess_id,
@@ -143,8 +121,7 @@ def _start_background_training(
     dev_mode,
     force_train,
 ):
-    meal_key = meal_type or 'all'
-    key = f"{mess_id}:{meal_key}"
+    key = f"{mess_id}:{meal_type}"
     if key in _TRAINING_IN_PROGRESS:
         return
 
@@ -212,27 +189,6 @@ def normalize_meal_type(meal_type):
         return None
     normalized = str(meal_type).strip().lower()
     return normalized if normalized in MEAL_WINDOWS else None
-
-def parse_bool(value, default=False):
-    if value is None:
-        return default
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, (int, float)):
-        return value != 0
-    if isinstance(value, str):
-        normalized = value.strip().lower()
-        if normalized in ('true', '1', 'yes', 'y', 'on'):
-            return True
-        if normalized in ('false', '0', 'no', 'n', 'off'):
-            return False
-    return default
-
-def is_dev_mode_allowed():
-    if parse_bool(os.environ.get('ALLOW_DEV_MODE'), False):
-        return True
-    env = _env_value('APP_ENV') or _env_value('ENVIRONMENT') or _env_value('FLASK_ENV')
-    return env in ('dev', 'development', 'local', 'test')
 
 def parse_capacity(value):
     try:
@@ -383,7 +339,8 @@ def train_mess_model(
         'usedDummy': False,
         'skippedRecent': False,
     }
-    meal_label = meal_type or 'all'
+    if not meal_type:
+        return training_info
 
     try:
         if minutes_back is None and not force_train and _has_recent_model(mess_id, max_age_minutes=60):
@@ -428,14 +385,14 @@ def train_mess_model(
             training_info['trained'] = regressor.train(attendance_records)
             if training_info['trained']:
                 prediction_service.models_cache.pop(mess_id, None)
-                logger.info("Trained model for %s (%s) with %s records", mess_id, meal_label, len(attendance_records))
+                print(f"[OK] Trained model for {mess_id} ({meal_type}) with {len(attendance_records)} records")
             else:
-                logger.warning("Training skipped for %s due to insufficient data", mess_id)
+                print(f"[WARN] Training skipped for {mess_id} due to insufficient data")
         else:
-            logger.warning("No historical data for %s (%s); using existing model", mess_id, meal_label)
+            print(f"[WARN] No historical data for {mess_id} ({meal_type}); using existing model")
     except Exception as e:
         _disable_firestore_if_needed(e)
-        logger.warning("Training failed for %s: %s", mess_id, e)
+        print(f"[WARN] Training failed for {mess_id}: {e}")
 
     return training_info
 
@@ -457,19 +414,15 @@ def predict():
     try:
         data = request.get_json() or {}
         mess_id = data.get('messId')
-        dev_mode = parse_bool(data.get('devMode'), False)  # Allow predictions outside meal times in dev mode
-        if dev_mode and not is_dev_mode_allowed():
-            dev_mode = False
+        dev_mode = data.get('devMode', False)  # Allow predictions outside meal times in dev mode
         requested_slot = normalize_meal_type(data.get('slot') or data.get('mealType'))
-        force_train = parse_bool(data.get('forceTrain'), False)
-        auto_train = parse_bool(data.get('autoTrain'), True)
-        async_train = parse_bool(data.get('asyncTrain'), True)
+        force_train = bool(data.get('forceTrain', False))
+        auto_train = bool(data.get('autoTrain', True))
+        async_train = bool(data.get('asyncTrain', True))
         try:
             days_back = max(1, int(data.get('daysBack', 30)))
         except Exception:
             days_back = 30
-        max_days_back = int(os.environ.get('MAX_DAYS_BACK', 90))
-        days_back = min(days_back, max_days_back)
         try:
             minutes_back = data.get('minutesBack')
             minutes_back = int(minutes_back) if minutes_back is not None else None
@@ -477,9 +430,13 @@ def predict():
                 minutes_back = None
         except Exception:
             minutes_back = None
-        if minutes_back is not None:
-            max_minutes_back = int(os.environ.get('MAX_MINUTES_BACK', 240))
-            minutes_back = min(minutes_back, max_minutes_back)
+        try:
+            minutes_back = data.get('minutesBack')
+            minutes_back = int(minutes_back) if minutes_back is not None else None
+            if minutes_back is not None and minutes_back <= 0:
+                minutes_back = None
+        except Exception:
+            minutes_back = None
         
         if not mess_id:
             return jsonify({'error': 'messId is required'}), 400
@@ -546,7 +503,7 @@ def predict():
                     current_count = sum(1 for _ in students)
             except Exception as e:
                 _disable_firestore_if_needed(e)
-                logger.warning("Could not get current attendance: %s", e)
+                print(f"[WARN] Could not get current attendance: {e}")
                 current_count = 0
         
         # Get mess capacity (require override to avoid Firestore auth delays)
@@ -614,9 +571,10 @@ def predict():
         return jsonify(result), 200
         
     except Exception as e:
-        logger.exception("predict failed")
-        message = 'Internal server error' if is_production() else str(e)
-        return jsonify({'error': message}), 500
+        print(f"[ERROR] predict: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/train', methods=['POST'])
@@ -628,22 +586,14 @@ def train_model():
     try:
         data = request.get_json() or {}
         mess_id = data.get('messId')
-        raw_slot = data.get('slot')
-        if raw_slot is None:
-            raw_slot = data.get('mealType')
-        slot_present = raw_slot is not None and str(raw_slot).strip() != ''
-        requested_slot = normalize_meal_type(raw_slot)
-        force_train = parse_bool(data.get('forceTrain'), True)
-        dev_mode = parse_bool(data.get('devMode'), False)
-        if dev_mode and not is_dev_mode_allowed():
-            dev_mode = False
-        async_train = parse_bool(data.get('asyncTrain'), True)
+        requested_slot = normalize_meal_type(data.get('slot') or data.get('mealType'))
+        force_train = bool(data.get('forceTrain', True))
+        dev_mode = bool(data.get('devMode', False))
+        async_train = bool(data.get('asyncTrain', True))
         try:
             days_back = max(1, int(data.get('daysBack', 30)))
         except Exception:
             days_back = 30
-        max_days_back = int(os.environ.get('MAX_DAYS_BACK', 90))
-        days_back = min(days_back, max_days_back)
         try:
             minutes_back = data.get('minutesBack')
             minutes_back = int(minutes_back) if minutes_back is not None else None
@@ -651,34 +601,30 @@ def train_model():
                 minutes_back = None
         except Exception:
             minutes_back = None
-        if minutes_back is not None:
-            max_minutes_back = int(os.environ.get('MAX_MINUTES_BACK', 240))
-            minutes_back = min(minutes_back, max_minutes_back)
         
         if not mess_id:
             return jsonify({
                 'error': 'messId is required'
             }), 400
 
-        if slot_present and not requested_slot:
-            return jsonify({'error': 'Invalid slot. Use breakfast, lunch, or dinner.'}), 400
-
         current_time = datetime.now()
-        meal_type = requested_slot
-        if meal_type is None and minutes_back is not None:
-            meal_type = get_meal_type_exact(current_time.hour, current_time.minute)
+        meal_type = requested_slot or get_meal_type_exact(current_time.hour, current_time.minute)
 
-            if not meal_type and dev_mode:
-                hour = current_time.hour
-                if hour < 12:
-                    meal_type = 'breakfast'
-                elif hour < 19:
-                    meal_type = 'lunch'
-                else:
-                    meal_type = 'dinner'
+        if not meal_type and dev_mode:
+            hour = current_time.hour
+            if hour < 12:
+                meal_type = 'breakfast'
+            elif hour < 19:
+                meal_type = 'lunch'
+            else:
+                meal_type = 'dinner'
 
-            if not meal_type:
-                minutes_back = None
+        if not meal_type:
+            return jsonify({
+                'messId': mess_id,
+                'warning': 'Outside meal hours. Provide slot to train.',
+                'training': {'trained': False, 'records': 0}
+            }), 200
 
         training_info = {'trained': False, 'records': 0}
         should_train = minutes_back is not None or force_train or not _has_recent_model(mess_id)
@@ -715,9 +661,10 @@ def train_model():
         }), 200
             
     except Exception as e:
-        logger.exception("train failed")
-        message = 'Internal server error' if is_production() else str(e)
-        return jsonify({'error': message}), 500
+        print(f"Error in train: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/manager-info', methods=['GET'])
 def manager_info():
@@ -729,8 +676,6 @@ def manager_info():
             return jsonify({'error': 'messId required'}), 400
 
         if not db or not FIRESTORE_AVAILABLE:
-            if is_production():
-                return jsonify({'error': 'Firestore unavailable'}), 503
             return jsonify({
                 'messId': mess_id,
                 'managerName': 'Not Set',
@@ -756,14 +701,12 @@ def manager_info():
                 return jsonify({'error': 'Mess not found'}), 404
         except Exception as e:
             _disable_firestore_if_needed(e)
-            logger.exception("Getting manager info failed")
-            message = 'Internal server error' if is_production() else str(e)
-            return jsonify({'error': message}), 500
+            print(f"[ERROR] Getting manager info: {e}")
+            return jsonify({'error': str(e)}), 500
             
     except Exception as e:
-        logger.exception("manager-info failed")
-        message = 'Internal server error' if is_production() else str(e)
-        return jsonify({'error': message}), 500
+        print(f"[ERROR] manager-info: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/analytics', methods=['GET', 'OPTIONS'])
 def analytics():
@@ -812,8 +755,6 @@ def analytics():
                 }), 200
 
         if not db or not FIRESTORE_AVAILABLE:
-            if is_production():
-                return jsonify({'error': 'Firestore unavailable'}), 503
             return jsonify({
                 'messId': mess_id,
                 'date': date_param,
@@ -882,9 +823,7 @@ def analytics():
             
         except Exception as e:
             _disable_firestore_if_needed(e)
-            logger.warning("Getting analytics failed: %s", e)
-            if is_production():
-                return jsonify({'error': 'Unable to load analytics'}), 500
+            print(f"[WARN] Getting analytics: {e}")
             return jsonify({
                 'messId': mess_id,
                 'date': date_param,
@@ -899,9 +838,8 @@ def analytics():
             }), 200
             
     except Exception as e:
-        logger.exception("analytics failed")
-        message = 'Internal server error' if is_production() else str(e)
-        return jsonify({'error': message}), 500
+        print(f"[ERROR] analytics: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/reviews', methods=['GET', 'POST', 'OPTIONS'])
 def reviews():
@@ -927,8 +865,6 @@ def reviews():
 
         if not db or not FIRESTORE_AVAILABLE:
             if request.method == 'POST':
-                return jsonify({'error': 'Firestore unavailable'}), 503
-            if is_production():
                 return jsonify({'error': 'Firestore unavailable'}), 503
             return jsonify({
                 'messId': mess_id,
@@ -967,7 +903,7 @@ def reviews():
                 review_ref = db.collection('reviews').document(mess_id).collection(date_str).document(meal_type).collection('items').document()
                 review_ref.set(review_data)
                 
-                logger.info("Review submitted for %s %s %s", mess_id, date_str, meal_type)
+                print(f"[OK] Review submitted for {mess_id} {date_str} {meal_type}")
                 
                 return jsonify({
                     'status': 'submitted',
@@ -977,9 +913,8 @@ def reviews():
                 }), 201
             except Exception as e:
                 _disable_firestore_if_needed(e)
-                logger.exception("Submitting review failed")
-                message = 'Database error' if is_production() else f'Database error: {str(e)}'
-                return jsonify({'error': message}), 500
+                print(f"[ERROR] Submitting review: {e}")
+                return jsonify({'error': f'Database error: {str(e)}'}), 500
         
         else:  # GET
             # Get reviews for specific date/slot or current slot
@@ -1022,9 +957,7 @@ def reviews():
                 }), 200
             except Exception as e:
                 _disable_firestore_if_needed(e)
-                logger.warning("Getting reviews failed: %s", e)
-                if is_production():
-                    return jsonify({'error': 'Could not load reviews'}), 500
+                print(f"[WARN] Getting reviews: {e}")
                 return jsonify({
                     'messId': mess_id,
                     'slot': meal_type,
@@ -1034,9 +967,10 @@ def reviews():
                 }), 200
                 
     except Exception as e:
-        logger.exception("reviews failed")
-        message = 'Internal server error' if is_production() else str(e)
-        return jsonify({'error': message}), 500
+        print(f"[ERROR] reviews: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/attendance', methods=['GET', 'OPTIONS'])
 def get_attendance():
@@ -1056,8 +990,6 @@ def get_attendance():
             return jsonify({'error': 'messId, date, and slot required'}), 400
 
         if not db or not FIRESTORE_AVAILABLE:
-            if is_production():
-                return jsonify({'error': 'Firestore unavailable'}), 503
             return jsonify({
                 'messId': mess_id,
                 'date': date_param,
@@ -1085,9 +1017,7 @@ def get_attendance():
             }), 200
         except Exception as e:
             _disable_firestore_if_needed(e)
-            logger.warning("Getting attendance failed: %s", e)
-            if is_production():
-                return jsonify({'error': 'Could not load attendance'}), 500
+            print(f"[WARN] Getting attendance: {e}")
             return jsonify({
                 'messId': mess_id,
                 'date': date_param,
@@ -1098,9 +1028,8 @@ def get_attendance():
             }), 200
             
     except Exception as e:
-        logger.exception("get_attendance failed")
-        message = 'Internal server error' if is_production() else str(e)
-        return jsonify({'error': message}), 500
+        print(f"[ERROR] get_attendance: {e}")
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
